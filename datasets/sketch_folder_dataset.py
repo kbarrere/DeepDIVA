@@ -54,13 +54,12 @@ def load_dataset(dataset_folder, in_memory=True, workers=1):
     if not is_npz:
         logging.error("No npz files were found in the follder " + dataset_folder)
         sys.exit(-10)
-             
 
     if in_memory:
         #store all the sketches in memory
-	train_ds = SketchFolderInmemory(dataset_folder, "train")
-        train_ds = SketchFolderInmemory(dataset_folder, "val")
-        train_ds = SketchFolderInmemory(dataset_folder, "test")
+        train_ds = SketchFolderInMemory(dataset_folder, "train")
+        val_ds = SketchFolderInMemory(dataset_folder, "valid")
+        test_ds = SketchFolderInMemory(dataset_folder, "test")
 
     else:
         #TODO 
@@ -70,7 +69,7 @@ def load_dataset(dataset_folder, in_memory=True, workers=1):
     return train_ds, val_ds, test_ds
 
 
-class SketchFolderInmemory(data.Dataset):
+class SketchFolderInMemory(data.Dataset):
     """
     This class loads the data provided and stores it entirely in memory as a dataset.
     """
@@ -95,8 +94,8 @@ class SketchFolderInmemory(data.Dataset):
             Number of workers to use for the dataloaders
         """
 
-	if split is not in ["train", "val", "test"]:
-            logging.error("provided split (" + split + ") is not train, val or test")
+        if split not in ["train", "valid", "test"]:
+            logging.error("provided split (" + split + ") is not train, valid or test")
             sys.exit(-1)
 
         self.dataset_folder = os.path.expanduser(dataset_folder)
@@ -105,9 +104,9 @@ class SketchFolderInmemory(data.Dataset):
         self.split = split
    
         data = []
-        labels = []
+        labels =[]
 
-	for filename in os.listdir(self.dataset_folder)
+        for filename in os.listdir(self.dataset_folder):
             if filename.endswith(".npz"):
                 label = os.path.splitext(filename)[0]
 
