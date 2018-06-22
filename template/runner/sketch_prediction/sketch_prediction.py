@@ -56,7 +56,7 @@ class SketchPrediction:
 
         # Get the selected model input size
         model_expected_input_size = models.__dict__[model_name]().expected_input_size
-        ImageClassification._validate_model_input_size(model_expected_input_size, model_name)
+        SketchPrediction._validate_model_input_size(model_expected_input_size, model_name)
         logging.info('Model {} expects input size of {}'.format(model_name, model_expected_input_size))
 
         # Setting up the dataloaders
@@ -74,20 +74,20 @@ class SketchPrediction:
         val_value = np.zeros((epochs + 1 - start_epoch))
         train_value = np.zeros((epochs - start_epoch))
 
-        val_value[-1] = ImageClassification._validate(val_loader, model, criterion, writer, -1, **kwargs)
+        val_value[-1] = SketchPrediction._validate(val_loader, model, criterion, writer, -1, **kwargs)
         for epoch in range(start_epoch, epochs):
             # Train
-            train_value[epoch] = ImageClassification._train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
+            train_value[epoch] = SketchPrediction._train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
 
             # Validate
             if epoch % validation_interval == 0:
-                val_value[epoch] = ImageClassification._validate(val_loader, model, criterion, writer, epoch, **kwargs)
+                val_value[epoch] = SketchPrediction._validate(val_loader, model, criterion, writer, epoch, **kwargs)
             if decay_lr is not None:
                 adjust_learning_rate(lr=lr, optimizer=optimizer, epoch=epoch, decay_lr_epochs=decay_lr)
             best_value = checkpoint(epoch, val_value[epoch], best_value, model, optimizer, current_log_folder)
 
         # Test
-        test_value = ImageClassification._test(test_loader, model, criterion, writer, epochs - 1, **kwargs)
+        test_value = SketchPrediction._test(test_loader, model, criterion, writer, epochs - 1, **kwargs)
         logging.info('Training completed')
 
         return train_value, val_value, test_value
