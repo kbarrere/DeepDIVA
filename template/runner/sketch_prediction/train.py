@@ -38,7 +38,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         Specifies whether the GPU should be used or not. A value of 'True' means the CPU will be used.
 
     :param log_interval : int
-        Interval limiting the logging of mini-batches. Default value of 10.
+        Interval limiting the logging of mini-batches. Default value of 25.
 
     :return:
         None
@@ -112,6 +112,8 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
 
 def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, acc_meter):
+    # TODO: Change the output of the model according to the custom loss ?
+    # TODO: At least create a function to get what is needed for the loss ?
     # Compute output
     output = model(input_var)
 

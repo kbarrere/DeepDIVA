@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import random
 
 
 class Sketch_RNN(nn.Module):
@@ -104,7 +105,77 @@ class Sketch_RNN(nn.Module):
 
         # GMM
 
-        predicted_point = ...
+        # compute dx and dy for the predicted next point
+        dx = 0
+        dy = 0
+
+        exp_sum_pi = torch.tensor([0.])
+        for j in range(self.num_mixture):
+            exp_sum_pi = torch.add(exp_sum_pi, torch.exp(y[6 * j]))
+
+        # each value of y_i encode a parameter for the GMM
+        for j in range(self.num_mixture):
+            pi_ = y[6 * j]
+            mean_x = y[6 * j + 1]
+            mean_y = y[6 * j + 2]
+            std_x_ = y[6 * j + 3]
+            std_y_ = y[6 * j + 4]
+            cor_ = y[6 * j + 5]
+
+            std_x = torch.exp(std_x_)
+            std_y = torch.exp(std_y_)
+
+            pi = torch.div(torch.exp(pi_), exp_sum_pi)
+
+            cor = torch.tanh(cor_)
+
+            mean = [mean_x, mean_y]
+            cov = [[std_x ** 2, cor], [cor, std_y ** 2]]
+
+            # generate one random point (dx_j, dy_j) from a bivariate normal distribution
+            x_array, y_array = np.random.multivariate_normal(mean, cov, 1).T
+
+            dx = dx + pi * x_array[0]
+            dy = dy + pi * y_array[0]
+
+        # generate p1, p2 and p3
+        q1_ = y[-3]
+        q2_ = y[-2]
+        q3_ = y[-1]
+
+        expq1 = torch.exp(q1_)
+        expq2 = torch.exp(q2_)
+        expq3 = torch.exp(q3_)
+        exp_sum_q = expq1 + expq2 + expq3
+
+        q1_ = q1_ / exp_sum_q
+        q2_ = q2_ / exp_sum_q
+        q3_ = q3_ / exp_sum_q
+
+        sum = q1_ + q2_ + q3_
+
+        q1 = q1_ / sum
+        q2 = q2_ / sum
+        q3 = q3_ / sum
+
+        # generate p1, p2 and p3 based on bernoulli distribution
+        p1 = 0
+        p2 = 0
+        p3 = 0
+
+        p = random.random()
+        if p < q1:
+            p1 = 1
+
+        p = random.random()
+        if p < q2:
+            p2 = 1
+
+        p = random.random()
+        if p < q3:
+            p3 = 1
+
+        predicted_point = torch.tensor(dx, dy, p1, p2, p3)
         predicted_sketch = torch.tensor([predicted_point.numpy])
 
         h_i1 = h_i
@@ -193,5 +264,8 @@ class Sketch_RNN(nn.Module):
 
             h_i1 = h_i
             c_i1 = c_i
+
+        # TODO: Change the output of the model according to the custom loss ?
+        # TODO: At least create a function to get what is needed for the loss ?
 
         return predicted_sketch
