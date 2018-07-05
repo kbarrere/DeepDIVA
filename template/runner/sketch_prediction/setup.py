@@ -24,11 +24,11 @@ from tensorboardX import SummaryWriter
 
 # DeepDIVA
 import models
-#from datasets import image_folder_dataset, bidimensional_dataset
+# from datasets import image_folder_dataset, bidimensional_dataset
 from datasets import sketch_folder_dataset
 from util.data.dataset_analytics import compute_mean_std
 from util.misc import get_all_files_in_folders_and_subfolders
-
+from template.runner.sketch_prediction.transforms import ExtendSketchFormat, SketchToTensor
 
 
 def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cuda, resume, load_model, start_epoch
@@ -81,25 +81,26 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     logging.info('Setting up model {}'.format(model_name))
 
     output_channels = output_channels if num_classes == None else num_classes
-    model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained)
+    #model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained)
+    model = models.__dict__[model_name](no_cuda)
 
     # Get the optimizer created with the specified parameters in kwargs (such as lr, momentum, ... )
     optimizer = _get_optimizer(optimizer_name, model, **kwargs)
 
     # Get the criterion
     if disable_databalancing:
-        criterion = nn.CrossEntropyLoss()
-        #criterion = SketchRnnLoss()
+        #criterion = nn.CrossEntropyLoss()
+        criterion = SketchRnnLoss(no_cuda)
     else:
         try:
             weights = _load_class_frequencies_weights_from_file(dataset_folder, inmem, workers)
-            criterion = nn.CrossEntropyLoss(weight=torch.from_numpy(weights).type(torch.FloatTensor))
-            #criterion = SketchRnnLoss()
+            #criterion = nn.CrossEntropyLoss(weight=torch.from_numpy(weights).type(torch.FloatTensor))
+            criterion = SketchRnnLoss(no_cuda)
             logging.info('Loading weights for data balancing')
         except:
             logging.warning('Unable to load information for data balancing. Using normal criterion')
-            criterion = nn.CrossEntropyLoss()
-            #criterion = SketchRnnLoss()
+            #criterion = nn.CrossEntropyLoss()
+            criterion = SketchRnnLoss(no_cuda)
 
     # Transfer model to GPU (if desired)
     if not no_cuda:
@@ -230,15 +231,11 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
         logging.debug("Try to load dataset as images")
         train_ds, val_ds, test_ds = sketch_folder_dataset.load_dataset(dataset_folder, inmem, workers)
 
-        # Loads the analytics csv and extract mean and std
-        mean, std = _load_mean_std_from_file(dataset_folder, inmem, workers)
-
         # Set up dataset transforms
         logging.debug('Setting up dataset transforms')
         transform = transforms.Compose([
-            transforms.Resize(model_expected_input_size),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)
+            ExtendSketchFormat(),
+            SketchToTensor()
         ])
 
         train_ds.transform = transform
@@ -247,11 +244,11 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
 
         train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size, train_ds, val_ds, test_ds,
                                                                            workers)
-        logging.info("Dataset loaded as images")
+        logging.info("Dataset loaded as sketches")
         return train_loader, val_loader, test_loader, len(train_ds.classes)
 
     except RuntimeError:
-        logging.debug("No images found in dataset folder provided")
+        logging.debug("No sketch found in dataset folder provided")
 
     ###############################################################################################
     # Load the dataset splits as bidimensional
@@ -259,19 +256,12 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
         logging.debug("Try to load dataset as bidimensional")
         train_ds, val_ds, test_ds = bidimensional_dataset.load_dataset(dataset_folder)
 
-        # Loads the analytics csv and extract mean and std
-        # TODO: update bidimensional to work with new load_mean_std functions
-        mean, std = _load_mean_std_from_file(dataset_folder, inmem, workers)
-
         # Bring mean and std into range [0:1] from original domain
-        mean = np.divide((mean - train_ds.min_coords), np.subtract(train_ds.max_coords, train_ds.min_coords))
-        std = np.divide((std - train_ds.min_coords), np.subtract(train_ds.max_coords, train_ds.min_coords))
 
         # Set up dataset transforms
         logging.debug('Setting up dataset transforms')
         transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)
+            transforms.ToTensor()
         ])
 
         train_ds.transform = transform
@@ -292,69 +282,7 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
     sys.exit(-1)
 
 
-def _load_mean_std_from_file(dataset_folder, inmem, workers):
-    """
-    This function simply recovers mean and std from the analytics.csv file
 
-    Parameters:
-    -----------
-    :param dataset_folder: string
-        Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
-
-    :param inmem: boolean
-        Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
-        on demand. This is slower than storing everything in memory.
-
-    :param workers: int
-        Number of workers to use for the mean/std computation
-
-    :return: double[], double[]
-        Mean and Std of the selected dataset, contained in the analytics.csv file. These are double arrays.
-    """
-    # Loads the analytics csv and extract mean and std
-    try:
-        csv_file = _load_analytics_csv(dataset_folder, inmem, workers)
-        mean = np.asarray(csv_file.ix[0, 1:3])
-        std = np.asarray(csv_file.ix[1, 1:3])
-    except KeyError:
-        import sys
-        logging.error('analytics.csv located in {} incorrectly formed. '
-                      'Try to delete it and run again'.format(dataset_folder))
-        sys.exit(0)
-    return mean, std
-
-
-def _load_analytics_csv(dataset_folder, inmem, workers):
-    """
-        This function simply loads the analytics.csv file and attempts creating it if it misses
-
-        Parameters:
-        -----------
-        :param dataset_folder: string
-            Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
-
-        :param inmem: boolean
-            Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
-            on demand. This is slower than storing everything in memory.
-
-        :param workers: int
-            Number of workers to use for the mean/std computation
-
-        :return:
-            The csv file
-        """
-    # If analytics.csv file not present, run the analytics on the dataset
-    if not os.path.exists(os.path.join(dataset_folder, "analytics.csv")):
-        logging.warning('Missing analytics.csv file for dataset located at {}'.format(dataset_folder))
-        try:
-            logging.warning('Attempt creating analytics.csv file for dataset located at {}'.format(dataset_folder))
-            compute_mean_std(dataset_folder=dataset_folder, inmem=inmem, workers=workers)
-            logging.warning('Created analytics.csv file for dataset located at {} '.format(dataset_folder))
-        except:
-            logging.error('Creation of analytics.csv failed.')
-            sys.exit(-1)
-    # Loads the analytics csv
-    return pd.read_csv(os.path.join(dataset_folder, "analytics.csv"), header=None)
 
 
 def _dataloaders_from_datasets(batch_size, train_ds, val_ds, test_ds, workers):
@@ -434,11 +362,11 @@ def set_up_logging(parser, experiment_name, output_folder, quiet, args_dict, deb
     This is a somewhat risky operation because we access _private_variables of parsers classes.
     However, within our context this can be regarded as safe. 
     Shall we be wrong, a quick fix is writing a list of possible parameters such as:
-    
+
         train_param_list = ['model_name','lr', ...] 
-    
+
     and manually maintain it (boring!).
-    
+
     Resources:
     https://stackoverflow.com/questions/31519997/is-it-possible-to-only-parse-one-argument-groups-parameters-with-argparse
     """
@@ -449,7 +377,8 @@ def set_up_logging(parser, experiment_name, output_folder, quiet, args_dict, deb
     for group in parser._action_groups[2:]:
         if group.title not in ['GENERAL', 'DATA']:
             for action in group._group_actions:
-                if (kwargs[action.dest] is not None) and (kwargs[action.dest] != action.default) and action.dest != 'load_model':
+                if (kwargs[action.dest] is not None) and (
+                        kwargs[action.dest] != action.default) and action.dest != 'load_model':
                     non_default_parameters.append(str(action.dest) + "=" + str(kwargs[action.dest]))
 
     # Build up final logging folder tree with the non-default training parameters
@@ -540,10 +469,6 @@ def copy_code(output_folder):
     shutil.rmtree(tmp_dir)
 
     return
-
-
-
-
 
 
 def set_up_env(gpu_id, seed, multi_run, no_cuda, **kwargs):

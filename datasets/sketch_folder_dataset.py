@@ -44,7 +44,6 @@ def load_dataset(dataset_folder, in_memory=True, workers=1):
     if not os.path.isdir(dataset_folder):
         logging.error("Dataset folder not found in the args.dataset_folder=" + dataset_folder)
         sys.exit(-1)
-    #TODO check if there is npz files
 
     is_npz = False
     for filename in os.listdir(dataset_folder):
@@ -53,8 +52,10 @@ def load_dataset(dataset_folder, in_memory=True, workers=1):
             break
     if not is_npz:
         logging.error("No npz files were found in the follder " + dataset_folder)
-        sys.exit(-10)
+        sys.exit(-1)
 
+    #TODO it was only to test
+    in_memory = True
     if in_memory:
         #store all the sketches in memory
         train_ds = SketchFolderInMemory(dataset_folder, "train")

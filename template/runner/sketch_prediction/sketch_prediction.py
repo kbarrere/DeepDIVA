@@ -15,13 +15,14 @@ import numpy as np
 import models
 # Delegated
 from template.runner.sketch_prediction import evaluate, train
-from template.setup import set_up_model, set_up_dataloaders
+#from template.setup import set_up_model, set_up_dataloaders
+from template.runner.sketch_prediction.setup import set_up_model, set_up_dataloaders
 from util.misc import checkpoint, adjust_learning_rate
 
 
 class SketchPrediction:
     @staticmethod
-    def single_run(writer, current_log_folder, model_name, epochs, lr, decay_lr, validation_interval,
+    def single_run(writer, current_log_folder, model_name, epochs, lr, decay_lr, validation_interval, wkl = 1,
                    **kwargs):
         """
         This is the main routine where train(), validate() and test() are called.
@@ -42,6 +43,8 @@ class SketchPrediction:
             Any additional arguments.
         decay_lr : boolean
             Decay the lr flag
+        wkl : int
+            Weigth of the Lkl term (Loss = Lr + wkl * Lkl)
         validation_interval: int
             Run evaluation on validation set every N epochs
 
@@ -77,17 +80,18 @@ class SketchPrediction:
         val_value[-1] = SketchPrediction._validate(val_loader, model, criterion, writer, -1, **kwargs)
         for epoch in range(start_epoch, epochs):
             # Train
-            train_value[epoch] = SketchPrediction._train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
+            train_value[epoch] = SketchPrediction._train(train_loader, model, criterion, optimizer, writer, epoch, wkl, **kwargs)
 
             # Validate
             if epoch % validation_interval == 0:
-                val_value[epoch] = SketchPrediction._validate(val_loader, model, criterion, writer, epoch, **kwargs)
+                val_value[epoch] = SketchPrediction._validate(val_loader, model, criterion, writer, epoch, wkl, **kwargs)
             if decay_lr is not None:
                 adjust_learning_rate(lr=lr, optimizer=optimizer, epoch=epoch, decay_lr_epochs=decay_lr)
+            # TODO: update wkl ?
             best_value = checkpoint(epoch, val_value[epoch], best_value, model, optimizer, current_log_folder)
 
         # Test
-        test_value = SketchPrediction._test(test_loader, model, criterion, writer, epochs - 1, **kwargs)
+        test_value = SketchPrediction._test(test_loader, model, criterion, writer, epochs - 1, wkl, **kwargs)
         logging.info('Training completed')
 
         return train_value, val_value, test_value

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from util.misc import AverageMeter
 from util.evaluation.metrics import accuracy
 
-def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=False, log_interval=25, **kwargs):
+def train(train_loader, model, criterion, optimizer, writer, epoch, wkl = 1, no_cuda=False, log_interval=25, **kwargs):
     """
     Training routine
 
@@ -34,6 +34,9 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     :param epoch : int
         Number of the epoch (for logging purposes).
 
+    :param wkl : int
+        Weigth of the Lkl term (Loss = Lr + wkl * Lkl)
+
     :param no_cuda : boolean
         Specifies whether the GPU should be used or not. A value of 'True' means the CPU will be used.
 
@@ -48,7 +51,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     # Instantiate the counters
     batch_time = AverageMeter()
     loss_meter = AverageMeter()
-    acc_meter = AverageMeter()
+    #acc_meter = AverageMeter()
     data_time = AverageMeter()
 
     # Switch to train mode (turn on dropout & stuff)
@@ -71,17 +74,17 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        acc, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, acc_meter)
+        loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, wkl)
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar('train/mb_loss', loss.data[0], epoch * len(train_loader) + batch_idx)
-            writer.add_scalar('train/mb_accuracy', acc.cpu().numpy(), epoch * len(train_loader) + batch_idx)
+            #writer.add_scalar('train/mb_accuracy', acc.cpu().numpy(), epoch * len(train_loader) + batch_idx)
         else:
             writer.add_scalar('train/mb_loss_{}'.format(multi_run), loss.data[0],
                               epoch * len(train_loader) + batch_idx)
-            writer.add_scalar('train/mb_accuracy_{}'.format(multi_run), acc.cpu().numpy(),
-                              epoch * len(train_loader) + batch_idx)
+            #writer.add_scalar('train/mb_accuracy_{}'.format(multi_run), acc.cpu().numpy(),
+            #                   epoch * len(train_loader) + batch_idx)
 
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -93,37 +96,39 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
             pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
                              Loss='{loss.avg:.4f}\t'.format(loss=loss_meter),
-                             Acc1='{acc_meter.avg:.3f}\t'.format(acc_meter=acc_meter),
+                             #Acc1='{acc_meter.avg:.3f}\t'.format(acc_meter=acc_meter),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
     # Logging the epoch-wise accuracy
-    if multi_run is None:
-        writer.add_scalar('train/accuracy', acc_meter.avg, epoch)
-    else:
-        writer.add_scalar('train/accuracy_{}'.format(multi_run), acc_meter.avg, epoch)
+    #if multi_run is None:
+        #writer.add_scalar('train/accuracy', acc_meter.avg, epoch)
+    #else:
+        #writer.add_scalar('train/accuracy_{}'.format(multi_run), acc_meter.avg, epoch)
 
     logging.debug('Train epoch[{}]: '
-                  'Acc@1={acc_meter.avg:.3f}\t'
+                  #'Acc@1={acc_meter.avg:.3f}\t'
                   'Loss={loss.avg:.4f}\t'
                   'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
-                  .format(epoch, batch_time=batch_time, data_time=data_time, loss=loss_meter, acc_meter=acc_meter))
+                  .format(epoch, batch_time=batch_time, data_time=data_time, loss=loss_meter))
 
-    return acc_meter.avg
+    #TODO ?
+    return loss_meter.avg
 
 
-def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, acc_meter):
-    # TODO: Change the output of the model according to the custom loss ?
-    # TODO: At least create a function to get what is needed for the loss ?
+def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, wkl):
+    # TODO: wkl ?
     # Compute output
-    output = model(input_var)
+    output, mu, presig = model(input_var)
 
     # Compute and record the loss
-    loss = criterion(output, target_var)
-    loss_meter.update(loss.data[0], len(input_var))
+    # Format of the Sketch Rnn loss
+    loss = criterion(output, target_var, mu, presig, wkl)
+    loss_meter.update(loss.data.item(), len(input_var))
 
     # Compute and record the accuracy
-    acc = accuracy(output.data, target_var.data, topk=(1,))[0]
-    acc_meter.update(acc[0], len(input_var))
+    # TODO: Problem with accuarcy then ?
+    #acc = accuracy(output.data, target_var.data, topk=(1,))[0]
+    #acc_meter.update(acc[0], len(input_var))
 
     # Reset gradient
     optimizer.zero_grad()
@@ -132,4 +137,5 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, los
     # Perform a step by updating the weights
     optimizer.step()
 
-    return acc, loss
+    #return acc, loss
+    return loss

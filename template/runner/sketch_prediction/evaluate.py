@@ -15,17 +15,17 @@ from util.misc import AverageMeter, _prettyprint_logging_label, save_image_and_l
 from util.visualization.confusion_matrix_heatmap import make_heatmap
 
 
-def validate(val_loader, model, criterion, writer, epoch, no_cuda=False, log_interval=20, **kwargs):
+def validate(val_loader, model, criterion, writer, epoch, wkl = 1, no_cuda=False, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to validate the model."""
-    return _evaluate(val_loader, model, criterion, writer, epoch, 'val', no_cuda, log_interval, **kwargs)
+    return _evaluate(val_loader, model, criterion, writer, epoch, 'val', wkl, no_cuda, log_interval, **kwargs)
 
 
-def test(test_loader, model, criterion, writer, epoch, no_cuda=False, log_interval=20, **kwargs):
+def test(test_loader, model, criterion, writer, epoch, wkl = 1, no_cuda=False, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to test the model"""
-    return _evaluate(test_loader, model, criterion, writer, epoch, 'test', no_cuda, log_interval, **kwargs)
+    return _evaluate(test_loader, model, criterion, writer, epoch, 'test', wkl, no_cuda, log_interval, **kwargs)
 
 
-def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cuda=False, log_interval=10, **kwargs):
+def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, wkl = 1, no_cuda=False, log_interval=10, **kwargs):
     """
     The evaluation routine
 
@@ -49,6 +49,9 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     :param logging_label : string
         Label for logging purposes. Typically 'test' or 'valid'. Its prepended to the logging output path and messages.
 
+    :param wkl : int
+        Weigth of the Lkl term (Loss = Lr + wkl * Lkl)
+
     :param no_cuda : boolean
         Specifies whether the GPU should be used or not. A value of 'True' means the CPU will be used.
 
@@ -63,7 +66,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     # Instantiate the counters
     batch_time = AverageMeter()
     losses = AverageMeter()
-    top1 = AverageMeter()
+    top1 = AverageMeter() # TODO remove it ?
     data_time = AverageMeter()
 
     # Switch to evaluate mode (turn off dropout & such )
@@ -82,39 +85,47 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         # Measure data loading time
         data_time.update(time.time() - end)
 
+        #TODO its jst TEMP
+        target = input
+
         # Moving data to GPU
         if not no_cuda:
             input = input.cuda(async=True)
             target = target.cuda(async=True)
 
         # Convert the input and its labels to Torch Variables
-        input_var = torch.autograd.Variable(input, volatile=True)
-        target_var = torch.autograd.Variable(target, volatile=True)
+        #input_var = torch.autograd.Variable(input, volatile=True)
+        #input_var = torch.autograd.Variable(input)
+        #target_var = torch.autograd.Variable(target, volatile=True)
+        with torch.no_grad():
+            input_var = torch.autograd.Variable(input)
+            target_var = torch.autograd.Variable(target)
 
-        # Compute output
-        output = model(input_var)
+        # Compute outputs
+        output, mu, presig = model(input_var)
 
         # Compute and record the loss
-        loss = criterion(output, target_var)
-        losses.update(loss.data[0], input.size(0))
+        #TODO: wkl ?
+        loss = criterion(output, target_var, mu, presig, wkl)
+        losses.update(loss.data.item(), input.size(0))
 
         # Compute and record the accuracy
-        acc1 = accuracy(output.data, target, topk=(1,))[0]
-        top1.update(acc1[0], input.size(0))
+        #acc1 = accuracy(output.data, target, topk=(1,))[0]
+        #top1.update(acc1[0], input.size(0))
 
         # Get the predictions
-        _ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
-        _ = [targets.append(item) for item in target.cpu().numpy()]
+        #_ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
+        #_ = [targets.append(item) for item in target.cpu().numpy()]
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
-            writer.add_scalar(logging_label + '/mb_loss', loss.data[0], epoch * len(data_loader) + batch_idx)
-            writer.add_scalar(logging_label + '/mb_accuracy', acc1.cpu().numpy(), epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_loss', loss.data.item(), epoch * len(data_loader) + batch_idx)
+            #writer.add_scalar(logging_label + '/mb_accuracy', acc1.cpu().numpy(), epoch * len(data_loader) + batch_idx)
         else:
             writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0],
                               epoch * len(data_loader) + batch_idx)
-            writer.add_scalar(logging_label + '/mb_accuracy_{}'.format(multi_run), acc1.cpu().numpy(),
-                              epoch * len(data_loader) + batch_idx)
+            #writer.add_scalar(logging_label + '/mb_accuracy_{}'.format(multi_run), acc1.cpu().numpy(),
+            #                  epoch * len(data_loader) + batch_idx)
 
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -126,39 +137,22 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
 
             pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
                              Loss='{loss.avg:.4f}\t'.format(loss=losses),
-                             Acc1='{top1.avg:.3f}\t'.format(top1=top1),
+                             #Acc1='{top1.avg:.3f}\t'.format(top1=top1),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
-    # Make a confusion matrix
-    try:
-        cm = confusion_matrix(y_true=targets, y_pred=preds)
-        confusion_matrix_heatmap = make_heatmap(cm, data_loader.dataset.classes)
-    except ValueError:
-        logging.warning('Confusion Matrix did not work as expected')
-
-        confusion_matrix_heatmap = np.zeros((10, 10, 3))
-
-    # Logging the epoch-wise accuracy and confusion matrix
-    if multi_run is None:
-        writer.add_scalar(logging_label + '/accuracy', top1.avg, epoch)
-        save_image_and_log_to_tensorboard(writer, tag=logging_label + '/confusion_matrix',
-                                          image_tensor=confusion_matrix_heatmap, global_step=epoch)
-    else:
-        writer.add_scalar(logging_label + '/accuracy_{}'.format(multi_run), top1.avg, epoch)
-        save_image_and_log_to_tensorboard(writer, tag=logging_label + '/confusion_matrix_{}'.format(multi_run),
-                                          image_tensor=confusion_matrix_heatmap, global_step=epoch)
 
     logging.info(_prettyprint_logging_label(logging_label) +
                  ' epoch[{}]: '
-                 'Acc@1={top1.avg:.3f}\t'
+                 #'Acc@1={top1.avg:.3f}\t'
                  'Loss={loss.avg:.4f}\t'
                  'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
                  .format(epoch, batch_time=batch_time, data_time=data_time, loss=losses, top1=top1))
 
     # Generate a classification report for each epoch
-    _log_classification_report(data_loader, epoch, preds, targets, writer)
+    #_log_classification_report(data_loader, epoch, preds, targets, writer)
 
-    return top1.avg
+    # TODO: change that ? Something with the loss
+    return loss
 
 
 def _log_classification_report(data_loader, epoch, preds, targets, writer):
