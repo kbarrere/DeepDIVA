@@ -86,7 +86,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, wkl =
         data_time.update(time.time() - end)
 
         #TODO its jst TEMP
-        target = input
+        #target = input
 
         # Moving data to GPU
         if not no_cuda:

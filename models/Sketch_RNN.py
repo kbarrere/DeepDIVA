@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-
 class Sketch_RNN(nn.Module):
     """
     TODO : good introduction with citations probably
@@ -56,7 +55,7 @@ class Sketch_RNN(nn.Module):
 
         dec_input_size = sketch_point_size + self.z_size
         self.dec_hidden_size = 512
-        dec_bias =  True
+        dec_bias = True
 
         self.fc_h0 = nn.Sequential(
             nn.Linear(self.z_size, self.dec_hidden_size),
@@ -80,7 +79,7 @@ class Sketch_RNN(nn.Module):
         Computes forward pass on the network
         TODO
         the shape of the input sequence 's' should be
-        (seq_len, batch, input_size)
+        (batch, seq_len, input_size)
         """
 
         n_max = 256
@@ -93,8 +92,6 @@ class Sketch_RNN(nn.Module):
             s = s.type(torch.FloatTensor)
         else:
             s = s.type(torch.cuda.FloatTensor)
-
-
 
         h, _ = self.enc_brnn(s)
         h = h[:,-1] #only takes the results of the last point of the sequence
@@ -113,166 +110,117 @@ class Sketch_RNN(nn.Module):
 
         
         #generate a vector epsilon of size z_size, with each value following N(0,1)
-        epsilon = torch.randn(self.z_size)
+        epsilon = torch.randn(batch_size, self.z_size)
 
         if not self.no_cuda:
             epsilon = epsilon.type(torch.cuda.FloatTensor)
 
         z = torch.add(mu, torch.mul(sigma, epsilon))
 
-        h_0 = self.fc_h0(z)
+        h_i = self.fc_h0(z)
+        #TODO: add a tanh ?
 
         #decoder rnn with gaussian mixture model
 
-        #first iteration
+        # first iteration
         tmp_s = []
         tmp_c = []
         for i in range(batch_size):
             tmp_s.append([0., 0., 1., 0., 0.])
             tmp_c.append([0] * self.dec_hidden_size)
 
-        if self.no_cuda:
-            s_0 = torch.FloatTensor(tmp_s)
-            c_0 = torch.FloatTensor(tmp_c)
-        else:
-            s_0 = torch.cuda.FloatTensor(tmp_s)
-            c_0 = torch.cuda.FloatTensor(tmp_c)
-
-        x_0 = torch.cat((s_0, z), 1)
-
-        h_i, c_i = self.dec_rnn(x_0, (h_0, c_0))
-
-        y = self.fc_dec(h_i)
-
-        output = torch.ones(batch_size, n_max, 6 * self.num_mixture + 3)
+        output = torch.ones(n_max, batch_size, 6 * self.num_mixture + 3)
 
         if not self.no_cuda:
             output = output.type(torch.cuda.FloatTensor)
 
-        for b in range(batch_size):
-            exp_sum_pi = torch.tensor([0.])
-            if not self.no_cuda:
-                exp_sum_pi = exp_sum_pi.type(torch.cuda.FloatTensor)
-            for j in range(self.num_mixture):
-                exp_sum_pi = torch.add(exp_sum_pi, torch.exp(y[b][6 * j]))
+        if self.no_cuda:
+            s_0 = torch.FloatTensor(tmp_s)
+            c_i = torch.FloatTensor(tmp_c)
+        else:
+            s_0 = torch.cuda.FloatTensor(tmp_s)
+            c_i = torch.cuda.FloatTensor(tmp_c)
 
-            # each value of y_i encode a parameter for the GMM
-            for j in range(self.num_mixture):
-                pi_ = y[b][6 * j]
-
-                std_x_ = y[b][6 * j + 3]
-                std_y_ = y[b][6 * j + 4]
-                cor_ = y[b][6 * j + 5]
-
-                std_x = torch.exp(std_x_)
-                y[b][6 * j + 3] = std_x
-
-                std_y = torch.exp(std_y_)
-                y[b][6 * j + 4] = std_y
-
-                pi = torch.div(torch.exp(pi_), exp_sum_pi)
-                y[b][6 * j] = pi
-
-                cor = torch.tanh(cor_)
-                y[b][6 * j + 5] = cor
-
-            q1_ = y[b][-3]
-            q2_ = y[b][-2]
-            q3_ = y[b][-1]
-
-            expq1 = torch.exp(q1_)
-            expq2 = torch.exp(q2_)
-            expq3 = torch.exp(q3_)
-            exp_sum_q = expq1 + expq2 + expq3
-
-            q1 = expq1 / exp_sum_q
-            q2 = expq2 / exp_sum_q
-            q3 = expq3 / exp_sum_q
-
-            y[b][-3] = q1
-            y[b][-2] = q2
-            y[b][-1] = q3
-
-        #predicted_points = torch.tensor(y)
-        #predicted_sketchs = torch.FloatTensor([y.numpy])
-
-        #TODO:
-        for b in range(batch_size):
-            for i in range(6 * self.num_mixture + 3):
-                output[b][0][i] = y[b][i]
-
-        h_i1 = h_i
-        c_i1 = c_i
-
-
-        for i in range(1, n_max):
+        for i in range(n_max):
             # TODO: s_i1 = sequence
             # Default case when i >= Ns
 
-            s_i1 = s[:, i-1]
+            if i == 0:
+                s_i = s_0
+            else:
+                s_i = s[:, i-1]
 
-            x_i = torch.cat((s_i1, z), 1)
-            h_i, c_i = self.dec_rnn(x_i, (h_i1, c_i1))
+            x_i = torch.cat((s_i, z), 1)
+
+            h_i, c_i = self.dec_rnn(x_i, (h_i, c_i))
 
             y_i = self.fc_dec(h_i)
-            for b in range(batch_size):
-                exp_sum_pi = torch.tensor([0.])
-                if not self.no_cuda:
-                    exp_sum_pi = exp_sum_pi.type(torch.cuda.FloatTensor)
-                for j in range(self.num_mixture):
-                    exp_sum_pi = torch.add(exp_sum_pi, torch.exp(y_i[b][6*j]))
 
-                #each value of y_i encode a parameter for the GMM
-                for j in range(self.num_mixture):
-                    pi_ = y_i[b][6*j]
-                    std_x_ = y_i[b][6*j + 3]
-                    std_y_ = y_i[b][6*j + 4]
-                    cor_ = y_i[b][6*j + 5]
+            ind_pi_ = []
+            ind_mean1_ = []
+            ind_mean2_ = []
+            ind_std_x_ = []
+            ind_std_y_ = []
+            ind_cor_ = []
+            for j in range(self.num_mixture):
+                ind_pi_.append(6*j)
+                ind_mean1_.append(6 * j + 1)
+                ind_mean2_.append(6 * j + 2)
+                ind_std_x_.append(6*j + 3)
+                ind_std_y_.append(6*j + 4)
+                ind_cor_.append(6*j + 5)
+            ind_qk_ = [6*self.num_mixture, 6*self.num_mixture+1, 6*self.num_mixture+2]
 
-                    std_x = torch.exp(std_x_)
-                    y_i[b][6 * j + 3] = std_x
-                    std_y = torch.exp(std_y_)
-                    y_i[b][6 * j + 4] = std_y
+            if self.no_cuda:
+                ind_pi = torch.LongTensor(ind_pi_)
+                ind_mean1 = torch.LongTensor(ind_mean1_)
+                ind_mean2 = torch.LongTensor(ind_mean2_)
+                ind_std_x = torch.LongTensor(ind_std_x_)
+                ind_std_y = torch.LongTensor(ind_std_y_)
+                ind_cor = torch.LongTensor(ind_cor_)
+                ind_qk = torch.LongTensor(ind_qk_)
+            else:
+                ind_pi = torch.cuda.LongTensor(ind_pi_)
+                ind_mean1 = torch.cuda.LongTensor(ind_mean1_)
+                ind_mean2 = torch.cuda.LongTensor(ind_mean2_)
+                ind_std_x = torch.cuda.LongTensor(ind_std_x_)
+                ind_std_y = torch.cuda.LongTensor(ind_std_y_)
+                ind_cor = torch.cuda.LongTensor(ind_cor_)
+                ind_qk = torch.cuda.LongTensor(ind_qk_)
 
-                    pi = torch.div(torch.exp(pi_), exp_sum_pi)
-                    y_i[b][6 * j] = pi
+            t_pi_ = torch.index_select(y_i, 1, ind_pi)
+            t_mean1 = torch.index_select(y_i, 1, ind_mean1)
+            t_mean2 = torch.index_select(y_i, 1, ind_mean2)
+            t_std_x_ = torch.index_select(y_i, 1, ind_std_x)
+            t_std_y_ = torch.index_select(y_i, 1, ind_std_y)
+            t_cor_ = torch.index_select(y_i, 1, ind_cor)
+            t_qk_ = torch.index_select(y_i, 1, ind_qk)
 
-                    cor = torch.tanh(cor_)
-                    y_i[b][6 * j + 5] = cor
+            exp_pi = torch.exp(t_pi_)
+            exp_sum_pi = torch.sum(exp_pi, dim=1)
+            exp_pi_p = exp_pi.permute(1, 0)
+            t_pi = torch.div(exp_pi_p, exp_sum_pi)
+            t_pi = t_pi.permute(1, 0)
 
+            t_std_x = torch.exp(t_std_x_)
+            t_std_y = torch.exp(t_std_y_)
 
+            t_cor = torch.tanh(t_cor_)
 
+            exp_qk = torch.exp(t_qk_)
+            exp_sum_qk = torch.sum(exp_qk)
+            t_qk = exp_qk / exp_sum_qk
 
+            t_cat1 = torch.cat((t_pi, t_mean1), dim = 1)
+            t_cat2 = torch.cat((t_mean2, t_std_x), dim = 1)
+            t_cat3 = torch.cat((t_std_y, t_cor), dim = 1)
+            t_cat4 = torch.cat((t_cat1, t_cat2), dim = 1)
+            t_cat5 = torch.cat((t_cat3, t_qk), dim = 1)
+            t_cat = torch.cat((t_cat4, t_cat5), dim = 1)
 
-                #generate p1, p2 and p3
-                q1_ = y_i[b][-3]
-                q2_ = y_i[b][-2]
-                q3_ = y_i[b][-1]
+            #TODO
+            output[i] = t_cat
 
-                expq1 = torch.exp(q1_)
-                expq2 = torch.exp(q2_)
-                expq3 = torch.exp(q3_)
-                exp_sum_q = expq1 + expq2 + expq3
-
-                q1 = expq1 / exp_sum_q
-                q2 = expq2 / exp_sum_q
-                q3 = expq3 / exp_sum_q
-
-                y_i[b][-3] = q1
-                y_i[b][-2] = q2
-                y_i[b][-1] = q3
-
-
-
-            #predicted_points = torch.tensor(y_i)
-            #predicted_sketchs = torch.cat(predicted_sketchs, [predicted_points.numpy])
-
-               # TODO:
-            for b in range(batch_size):
-                for j in range(6 * self.num_mixture + 3):
-                    output[b][i][j] = y_i[b][j]
-
-            h_i1 = h_i
-            c_i1 = c_i
+        output = output.permute(1, 0, 2)
 
         return output, mu, presig

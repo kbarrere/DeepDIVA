@@ -33,98 +33,110 @@ class SketchRnnLoss(nn.Module):
             Loss : The computed loss
         """
         # Start by computing some usefull variables
-        batch_size = len(input)
-        Nmax = len(input[0])
+
+        input = input.permute(1, 0, 2)
+
+        batch_size = len(input[0])
+        Nmax = len(input)
         Ns = len(target[0]) #TODO:change it ! Ns should be a vector and computed as the first value wherer input[batch][seq] ???
         Nz = len(mu[0])
-        eps = 1e-6 # To avoid log(0)
+        eps = 1e-9 # To avoid log(0)
         M = len(input[0][0]) // 6
 
+        ind_x1_ = [0]
+        ind_x2_ = [1]
+        ind_pk_ = [2, 3, 4]
 
-        # Computes Lr first
-        Ls = 0
-        Lp = 0
-        for b in range(batch_size):
-            for i in range(Nmax):
-                yi = input[b][i]
+        ind_pi_ = range(0, 20)
+        ind_mean1_ = range(20, 40)
+        ind_mean2_ = range(40, 60)
+        ind_std1_ = range(60, 80)
+        ind_std2_ = range(80, 100)
+        ind_cor_ = range(100, 120)
+        ind_qk_ = range(120, len(input[0][0]))
 
-                if i < Ns:
-                    # Ls is computed only for the first Ns point
-                    x1 = target[b][i][0] # x shift of the input sequence/target
-                    x2 = target[b][i][1]  # y shift of the input sequence/target
-                    if self.no_cuda:
-                        x1 = x1.type(torch.FloatTensor)
-                        x2 = x2.type(torch.FloatTensor)
-                    else:
-                        x1 = x1.type(torch.cuda.FloatTensor)
-                        x2 = x2.type(torch.cuda.FloatTensor)
+        if self.no_cuda:
+            ind_x1 = torch.LongTensor(ind_x1_)
+            ind_x2 = torch.LongTensor(ind_x2_)
+            ind_pk = torch.LongTensor(ind_pk_)
 
-                    sum = 0
-                    for j in range(M):
-                        pi = yi[6 * j]
-                        mean1 = yi[6 * j + 1]
-                        mean2 = yi[6 * j + 2]
-                        std1 = yi[6 * j + 3]
-                        std2 = yi[6 * j + 4]
-                        cor = yi[6 * j + 5]
-                        # Equation (24) and (25) in http://arxiv.org/abs/1308.0850
-                        norm1 = x1 - mean1
-                        norm2 = x2 - mean2
-                        Z = ((norm1 ** 2) / (std1 ** 2)) + ((norm2 ** 2) / (std2 ** 2)) - (2 * cor * norm1 * norm2) / (std1 * std2)
-                        #TODO: problem with division by 0
-                        N = torch.exp( -1 * Z / (2 * (1 - cor ** 2))) / (2 * math.pi * std1 * std2 * torch.sqrt(1 - cor ** 2))
-                        #print(N)
-                        sum += pi * N
-                        #print(sum)
+            ind_pi = torch.LongTensor(ind_pi_)
+            ind_mean1 = torch.LongTensor(ind_mean1_)
+            ind_mean2 = torch.LongTensor(ind_mean2_)
+            ind_std1 = torch.LongTensor(ind_std1_)
+            ind_std2 = torch.LongTensor(ind_std2_)
+            ind_cor = torch.LongTensor(ind_cor_)
+            ind_qk = torch.LongTensor(ind_qk_)
+        else:
+            ind_x1 = torch.cuda.LongTensor(ind_x1_)
+            ind_x2 = torch.cuda.LongTensor(ind_x2_)
+            ind_pk = torch.cuda.LongTensor(ind_pk_)
 
-                    Ls += torch.log(sum + eps)
+            ind_pi = torch.cuda.LongTensor(ind_pi_)
+            ind_mean1 = torch.cuda.LongTensor(ind_mean1_)
+            ind_mean2 = torch.cuda.LongTensor(ind_mean2_)
+            ind_std1 = torch.cuda.LongTensor(ind_std1_)
+            ind_std2 = torch.cuda.LongTensor(ind_std2_)
+            ind_cor = torch.cuda.LongTensor(ind_cor_)
+            ind_qk = torch.cuda.LongTensor(ind_qk_)
 
-                # Computes Lp
-                q1 = yi[-3]
-                q2 = yi[-2]
-                q3 = yi[-1]
+        t_x1_ = torch.index_select(target, 2, ind_x1)
+        t_x2_ = torch.index_select(target, 2, ind_x2)
+        t_pk_ = torch.index_select(target, 2, ind_pk)
 
-                if self.no_cuda:
-                    q1 = q1.type(torch.FloatTensor)
-                    q2 = q2.type(torch.FloatTensor)
-                    q3 = q3.type(torch.FloatTensor)
-                else:
-                    q1 = q1.type(torch.cuda.FloatTensor)
-                    q2 = q2.type(torch.cuda.FloatTensor)
-                    q3 = q3.type(torch.cuda.FloatTensor)
+        t_x1 = t_x1_.permute(1, 0, 2)
+        t_x2 = t_x2_.permute(1, 0, 2)
+        t_pk = t_pk_.permute(1, 0, 2)
 
-                #default case when i >= Ns
-                p1, p2, p3 = 0, 0, 1
-                if i < Ns:
-                    p1 = target[b][i][2]
+        t_pi = torch.index_select(input, 2, ind_pi)
+        t_mean1 = torch.index_select(input, 2, ind_mean1)
+        t_mean2 = torch.index_select(input, 2, ind_mean2)
+        t_std1 = torch.index_select(input, 2, ind_std1)
+        t_std2 = torch.index_select(input, 2, ind_std2)
+        t_cor = torch.index_select(input, 2, ind_cor)
+        t_qk = torch.index_select(input, 2, ind_qk)
 
-                    p2 = target[b][i][3]
+        if self.no_cuda:
+            t_x1 = t_x1.type(torch.FloatTensor)
+            t_x2 = t_x2.type(torch.FloatTensor)
+            t_pk = t_pk.type(torch.FloatTensor)
+        else:
+            t_x1 = t_x1.type(torch.cuda.FloatTensor)
+            t_x2 = t_x2.type(torch.cuda.FloatTensor)
+            t_pk = t_pk.type(torch.cuda.FloatTensor)
 
-                    p3 = target[b][i][4]
+        t_norm1 = t_x1 - t_mean1
+        t_norm2 = t_x2 - t_mean2
 
+        t_s1s2 = t_std1 * t_std2
 
-                    if self.no_cuda:
-                        p1 = p1.type(torch.FloatTensor)
-                        p2 = p2.type(torch.FloatTensor)
-                        p3 = p3.type(torch.FloatTensor)
-                    else:
-                        p1 = p1.type(torch.cuda.FloatTensor)
-                        p2 = p2.type(torch.cuda.FloatTensor)
-                        p3 = p3.type(torch.cuda.FloatTensor)
+        t_z = ((t_norm1**2)/(t_std1**2)) + ((t_norm2**2)/(t_std2**2)) - ((2 * t_cor * t_norm1 * t_norm2)/t_s1s2)
 
+        t_neg_rho = 1 - t_cor**2
 
+        t_num = torch.exp(- 1 * t_z / (2 * t_neg_rho))
+        t_denom = 2 * math.pi * t_s1s2 * torch.sqrt(t_neg_rho)
+        t_n = t_num / t_denom
 
-                Lp += p1 * torch.log(q1 + eps) + p2 * torch.log(q2 + eps) + p3 * torch.log(q3 + eps)
+        t_mult = t_pi * t_n
+        t_sum = torch.sum(t_mult, dim=2)
+
+        t_log = torch.log(t_sum + eps)
+        t_sumlog = -1 * torch.sum(t_log[:Ns])
+        Ls = t_sumlog / (Nmax * batch_size)
+
+        t_log_qk = torch.log(t_qk + eps)
+        t_pk_log_qk = t_pk * t_log_qk
+        t_sum_pk_qk = torch.sum(t_pk_log_qk)
+
+        Lp = -1 * t_sum_pk_qk / (Nmax * batch_size)
 
         Lr = Ls + Lp
-        Lr *= (-1 / (Nmax * batch_size))
 
-        # Then computes Lkl
-        Lkl = 0
-        for b in range(batch_size):
-            for i in range(Nz):
-                Lkl += 1 + presig[b][i] - mu[b][i] ** 2 - torch.exp(presig[b][i])
-        Lkl *= (-1 / (2 * Nz * batch_size))
+        t_lkl_num = 1 + presig - mu**2 - torch.exp(presig)
+        t_lkl_sum = torch.sum(t_lkl_num)
+
+        Lkl = t_lkl_sum * (-1 / (2 * Nz * batch_size))
 
         Loss = Lr + wkl * Lkl
 

@@ -140,7 +140,7 @@ class SketchFolderInMemory(data.Dataset):
         """
         
         sketch = self.data[index]
-        target = self.labels[index]
+        target = self.data[index]
 
         if self.transform is not None:
             sketch = self.transform(sketch)

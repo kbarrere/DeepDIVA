@@ -77,7 +77,7 @@ class SketchPrediction:
         val_value = np.zeros((epochs + 1 - start_epoch))
         train_value = np.zeros((epochs - start_epoch))
 
-        val_value[-1] = SketchPrediction._validate(val_loader, model, criterion, writer, -1, **kwargs)
+        val_value[-1] = SketchPrediction._validate(val_loader, model, criterion, writer, -1, wkl, **kwargs)
         for epoch in range(start_epoch, epochs):
             # Train
             train_value[epoch] = SketchPrediction._train(train_loader, model, criterion, optimizer, writer, epoch, wkl, **kwargs)
@@ -113,13 +113,13 @@ class SketchPrediction:
     """
 
     @classmethod
-    def _train(cls, train_loader, model, criterion, optimizer, writer, epoch, **kwargs):
-        return train.train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
+    def _train(cls, train_loader, model, criterion, optimizer, writer, epoch, wkl, **kwargs):
+        return train.train(train_loader, model, criterion, optimizer, writer, epoch, wkl, **kwargs)
 
     @classmethod
-    def _validate(cls, val_loader, model, criterion, writer, epoch, **kwargs):
-        return evaluate.validate(val_loader, model, criterion, writer, epoch, **kwargs)
+    def _validate(cls, val_loader, model, criterion, writer, epoch, wkl, **kwargs):
+        return evaluate.validate(val_loader, model, criterion, writer, epoch, wkl, **kwargs)
 
     @classmethod
-    def _test(cls, test_loader, model, criterion, writer, epoch, **kwargs):
-        return evaluate.test(test_loader, model, criterion, writer, epoch, **kwargs)
+    def _test(cls, test_loader, model, criterion, writer, epoch, wkl, **kwargs):
+        return evaluate.test(test_loader, model, criterion, writer, epoch, wkl, **kwargs)

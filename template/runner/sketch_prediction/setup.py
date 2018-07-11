@@ -238,9 +238,15 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
             SketchToTensor()
         ])
 
+        #target_transform = SketchToTensor()
+
         train_ds.transform = transform
         val_ds.transform = transform
         test_ds.transform = transform
+
+        train_ds.target_transform = transform
+        val_ds.target_transform = transform
+        test_ds.target_transform = transform
 
         train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size, train_ds, val_ds, test_ds,
                                                                            workers)
@@ -254,7 +260,7 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
     # Load the dataset splits as bidimensional
     try:
         logging.debug("Try to load dataset as bidimensional")
-        train_ds, val_ds, test_ds = bidimensional_dataset.load_dataset(dataset_folder)
+        train_ds, val_ds, test_ds = sketch_folder_dataset.load_dataset(dataset_folder)
 
         # Bring mean and std into range [0:1] from original domain
 
@@ -267,6 +273,10 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
         train_ds.transform = transform
         val_ds.transform = transform
         test_ds.transform = transform
+
+        train_ds.target_transform = transform
+        val_ds.target_transform = transform
+        test_ds.target_transform = transform
 
         train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size, train_ds, val_ds, test_ds,
                                                                            workers)

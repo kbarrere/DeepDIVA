@@ -65,6 +65,9 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, wkl = 1, no_
         # Measure data loading time
         data_time.update(time.time() - end)
 
+        # TODO its jst TEMP
+        #target = input
+
         # Moving data to GPU
         if not no_cuda:
             input = input.cuda(async=True)
@@ -78,7 +81,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, wkl = 1, no_
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
-            writer.add_scalar('train/mb_loss', loss.data[0], epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_loss', loss.data.item(), epoch * len(train_loader) + batch_idx)
             #writer.add_scalar('train/mb_accuracy', acc.cpu().numpy(), epoch * len(train_loader) + batch_idx)
         else:
             writer.add_scalar('train/mb_loss_{}'.format(multi_run), loss.data[0],
