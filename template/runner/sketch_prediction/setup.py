@@ -28,7 +28,7 @@ import models
 from datasets import sketch_folder_dataset
 from util.data.dataset_analytics import compute_mean_std
 from util.misc import get_all_files_in_folders_and_subfolders
-from template.runner.sketch_prediction.transforms import ExtendSketchFormat, SketchToTensor
+from template.runner.sketch_prediction.transforms import ExtendSketchFormat, SketchToTensor, ScaleSketch
 
 
 def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cuda, resume, load_model, start_epoch
@@ -82,7 +82,7 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
 
     output_channels = output_channels if num_classes == None else num_classes
     #model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained)
-    model = models.__dict__[model_name](no_cuda)
+    model = models.__dict__[model_name](no_cuda, False)
 
     # Get the optimizer created with the specified parameters in kwargs (such as lr, momentum, ... )
     optimizer = _get_optimizer(optimizer_name, model, **kwargs)
@@ -113,6 +113,10 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     if load_model:
         if os.path.isfile(load_model):
             model_dict = torch.load(load_model)
+            if model_name == "Sketch_RNN_Complete":
+                logging.info('Converting the loaded model')
+                state_dict = convert_dict(model_dict['state_dict'])
+                model_dict['state_dict'] = state_dict
             logging.info('Loading a saved model')
             try:
                 model.load_state_dict(model_dict['state_dict'], strict=False)
@@ -235,6 +239,7 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
         logging.debug('Setting up dataset transforms')
         transform = transforms.Compose([
             ExtendSketchFormat(),
+            ScaleSketch(),
             SketchToTensor()
         ])
 
@@ -536,3 +541,22 @@ def set_up_env(gpu_id, seed, multi_run, no_cuda, **kwargs):
         torch.cuda.manual_seed_all(seed)
 
     return
+
+
+def convert_dict(dict):
+    print(dict.keys())
+    del dict['module.enc_brnn.weight_ih_l0']
+    del dict['module.enc_brnn.weight_hh_l0']
+    del dict['module.enc_brnn.bias_ih_l0']
+    del dict['module.enc_brnn.bias_hh_l0']
+    del dict['module.enc_brnn.weight_ih_l0_reverse']
+    del dict['module.enc_brnn.weight_hh_l0_reverse']
+    del dict['module.enc_brnn.bias_ih_l0_reverse']
+    del dict['module.enc_brnn.bias_hh_l0_reverse']
+
+    del dict['module.fc_sigma.weight']
+    del dict['module.fc_sigma.bias']
+    del dict['module.fc_mu.weight']
+    del dict['module.fc_mu.bias']
+
+    return dict

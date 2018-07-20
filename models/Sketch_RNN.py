@@ -11,7 +11,7 @@ class Sketch_RNN(nn.Module):
     """
 
     #TODO parameters
-    def __init__(self, no_cuda = True):
+    def __init__(self, no_cuda=True, conditional=False):
         """
         TODO
         """
@@ -19,42 +19,53 @@ class Sketch_RNN(nn.Module):
         super(Sketch_RNN, self).__init__()
 
         self.no_cuda = no_cuda
+        self.conditional = conditional
+        print("HELLO?")
 
         sketch_point_size = 5
+        max_seq_len = 256
 
-        enc_input_size = sketch_point_size
-        enc_hidden_size = 256
-        enc_num_layers = 1
-        enc_bias = True
-        enc_batch_first = True
-        enc_dropout = 0
-        enc_bidirectional = True
+        if self.conditional:
+            enc_input_size = sketch_point_size
+            enc_hidden_size = max_seq_len
+            enc_num_layers = 1
+            enc_bias = True
+            enc_batch_first = True
+            enc_dropout = 0
+            enc_bidirectional = True
 
-        self.expected_input_size = (enc_hidden_size, sketch_point_size)
+        self.expected_input_size = (max_seq_len, sketch_point_size)
 
         #TODO change the RNN type based on parameters ?
         #Encoder : Bidirectionnal Recurrent Neural Network
-        self.enc_brnn = nn.modules.rnn.LSTM(
-            enc_input_size,
-            enc_hidden_size,
-            num_layers = enc_num_layers,
-            bias = enc_bias,
-            batch_first = enc_batch_first,
-            dropout = enc_dropout,
-            bidirectional = enc_bidirectional
-        )
+        if self.conditional:
+            self.enc_brnn = nn.modules.rnn.LSTM(
+                enc_input_size,
+                enc_hidden_size,
+                num_layers = enc_num_layers,
+                bias = enc_bias,
+                batch_first = enc_batch_first,
+                dropout = enc_dropout,
+                bidirectional = enc_bidirectional
+            )
 
-        #h is the resulting vector from the concatenation of the outputs of the encoder
-        self.h_size = 2 * enc_hidden_size
+            #h is the resulting vector from the concatenation of the outputs of the encoder
+            self.h_size = 2 * enc_hidden_size
+
         #z is a latent vector that is randomly encoded and conditionned by the input
         self.z_size = 128
 
-        #Fully connected layer
-        self.fc_sigma = nn.Linear(self.h_size, self.z_size)
-        self.fc_mu = nn.Linear(self.h_size, self.z_size)
+        if self.conditional:
+            #Fully connected layer
+            self.fc_sigma = nn.Linear(self.h_size, self.z_size)
+            self.fc_mu = nn.Linear(self.h_size, self.z_size)
 
         dec_input_size = sketch_point_size + self.z_size
-        self.dec_hidden_size = 512
+
+        if self.conditional:
+            self.dec_hidden_size = 512
+        else:
+            self.dec_hidden_size = 1024
         dec_bias = True
 
         self.fc_h0 = nn.Sequential(
@@ -93,32 +104,43 @@ class Sketch_RNN(nn.Module):
         else:
             s = s.type(torch.cuda.FloatTensor)
 
-        h, _ = self.enc_brnn(s)
-        h = h[:,-1] #only takes the results of the last point of the sequence
-
-
-        presig = self.fc_sigma(h)
-        mu = self.fc_mu(h)
+        presig = torch.zeros(self.z_size)
+        mu = torch.zeros(self.z_size)
 
         if not self.no_cuda:
+            presig = presig.type(torch.cuda.FloatTensor)
             mu = mu.type(torch.cuda.FloatTensor)
 
-        sigma = torch.exp(torch.div(presig, 2))
+        if self.conditional:
+            h, _ = self.enc_brnn(s)
+            h = h[:,-1] #only takes the results of the last point of the sequence
 
-        if not self.no_cuda:
-            sigma = sigma.type(torch.cuda.FloatTensor)
+            presig = self.fc_sigma(h)
+            mu = self.fc_mu(h)
+
+            if not self.no_cuda:
+                mu = mu.type(torch.cuda.FloatTensor)
+
+            sigma = torch.exp(torch.div(presig, 2))
+
+            if not self.no_cuda:
+                sigma = sigma.type(torch.cuda.FloatTensor)
 
         
-        #generate a vector epsilon of size z_size, with each value following N(0,1)
-        epsilon = torch.randn(batch_size, self.z_size)
+            #generate a vector epsilon of size z_size, with each value following N(0,1)
+            epsilon = torch.randn(batch_size, self.z_size)
+
+            if not self.no_cuda:
+                epsilon = epsilon.type(torch.cuda.FloatTensor)
+
+            z = torch.add(mu, torch.mul(sigma, epsilon))
+        else:
+            z = torch.randn(batch_size, self.z_size)
 
         if not self.no_cuda:
-            epsilon = epsilon.type(torch.cuda.FloatTensor)
-
-        z = torch.add(mu, torch.mul(sigma, epsilon))
+            z = z.type(torch.cuda.FloatTensor)
 
         h_i = self.fc_h0(z)
-        #TODO: add a tanh ?
 
         #decoder rnn with gaussian mixture model
 
@@ -142,8 +164,6 @@ class Sketch_RNN(nn.Module):
             c_i = torch.cuda.FloatTensor(tmp_c)
 
         for i in range(n_max):
-            # TODO: s_i1 = sequence
-            # Default case when i >= Ns
 
             if i == 0:
                 s_i = s_0
@@ -211,12 +231,12 @@ class Sketch_RNN(nn.Module):
             exp_sum_qk = torch.sum(exp_qk)
             t_qk = exp_qk / exp_sum_qk
 
-            t_cat1 = torch.cat((t_pi, t_mean1), dim = 1)
-            t_cat2 = torch.cat((t_mean2, t_std_x), dim = 1)
-            t_cat3 = torch.cat((t_std_y, t_cor), dim = 1)
-            t_cat4 = torch.cat((t_cat1, t_cat2), dim = 1)
-            t_cat5 = torch.cat((t_cat3, t_qk), dim = 1)
-            t_cat = torch.cat((t_cat4, t_cat5), dim = 1)
+            t_cat1 = torch.cat((t_pi, t_mean1), dim=1)
+            t_cat2 = torch.cat((t_mean2, t_std_x), dim=1)
+            t_cat3 = torch.cat((t_std_y, t_cor), dim=1)
+            t_cat4 = torch.cat((t_cat1, t_cat2), dim=1)
+            t_cat5 = torch.cat((t_cat3, t_qk), dim=1)
+            t_cat = torch.cat((t_cat4, t_cat5), dim=1)
 
             #TODO
             output[i] = t_cat

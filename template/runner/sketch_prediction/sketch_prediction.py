@@ -22,7 +22,7 @@ from util.misc import checkpoint, adjust_learning_rate
 
 class SketchPrediction:
     @staticmethod
-    def single_run(writer, current_log_folder, model_name, epochs, lr, decay_lr, validation_interval, wkl = 1,
+    def single_run(writer, current_log_folder, model_name, epochs, lr, decay_lr, validation_interval, wkl=0.01,
                    **kwargs):
         """
         This is the main routine where train(), validate() and test() are called.
@@ -77,6 +77,10 @@ class SketchPrediction:
         val_value = np.zeros((epochs + 1 - start_epoch))
         train_value = np.zeros((epochs - start_epoch))
 
+        #TODO: add parameters for wkl decay:
+        kl_tolerance = 0.2
+        kl_decay_rate = 0.995
+
         val_value[-1] = SketchPrediction._validate(val_loader, model, criterion, writer, -1, wkl, **kwargs)
         for epoch in range(start_epoch, epochs):
             # Train
@@ -88,6 +92,7 @@ class SketchPrediction:
             if decay_lr is not None:
                 adjust_learning_rate(lr=lr, optimizer=optimizer, epoch=epoch, decay_lr_epochs=decay_lr)
             # TODO: update wkl ?
+            wkl = wkl / kl_decay_rate
             best_value = checkpoint(epoch, val_value[epoch], best_value, model, optimizer, current_log_folder)
 
         # Test

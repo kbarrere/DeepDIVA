@@ -7,10 +7,11 @@ class SketchRnnLoss(nn.Module):
     TODO: Something
     """
 
-    def __init__(self, no_cuda = True):
+    def __init__(self, no_cuda = True, conditional=False):
         super(SketchRnnLoss, self).__init__()
 
         self.no_cuda = no_cuda
+        self.conditional = conditional
 
         return
 
@@ -38,10 +39,21 @@ class SketchRnnLoss(nn.Module):
 
         batch_size = len(input[0])
         Nmax = len(input)
-        Ns = len(target[0]) #TODO:change it ! Ns should be a vector and computed as the first value wherer input[batch][seq] ???
         Nz = len(mu[0])
         eps = 1e-9 # To avoid log(0)
         M = len(input[0][0]) // 6
+
+        # Computes Ns:
+        target_abs = torch.abs(target)
+        target_sum = torch.sum(target_abs[:, :, :4], dim=2)
+        target_is_zero = torch.eq(target_sum, 0)
+        target_is_one = torch.eq(target[:, :, 4], 1)
+        is_finished = target_is_one * target_is_zero
+        is_not_finished = 1 - is_finished
+        if self.no_cuda:
+            is_not_finished = is_not_finished.type(torch.FloatTensor)
+        else:
+            is_not_finished = is_not_finished.type(torch.cuda.FloatTensor)
 
         ind_x1_ = [0]
         ind_x2_ = [1]
@@ -118,12 +130,15 @@ class SketchRnnLoss(nn.Module):
         t_denom = 2 * math.pi * t_s1s2 * torch.sqrt(t_neg_rho)
         t_n = t_num / t_denom
 
-        t_mult = t_pi * t_n
-        t_sum = torch.sum(t_mult, dim=2)
+        t_mul = t_pi * t_n
+        t_sum = torch.sum(t_mul, dim=2)
 
         t_log = torch.log(t_sum + eps)
-        t_sumlog = -1 * torch.sum(t_log[:Ns])
-        Ls = t_sumlog / (Nmax * batch_size)
+        # TODO: multiply by a vector of 1 and zero to keep the terms before Ns
+        is_not_finished = is_not_finished.permute(1, 0)
+        t_log_below_ns = t_log * is_not_finished
+        t_sum_log = -1 * torch.sum(t_log_below_ns)
+        Ls = t_sum_log / (Nmax * batch_size)
 
         t_log_qk = torch.log(t_qk + eps)
         t_pk_log_qk = t_pk * t_log_qk
@@ -133,10 +148,17 @@ class SketchRnnLoss(nn.Module):
 
         Lr = Ls + Lp
 
-        t_lkl_num = 1 + presig - mu**2 - torch.exp(presig)
-        t_lkl_sum = torch.sum(t_lkl_num)
+        Lkl = torch.FloatTensor([0])
+        if self.conditional:
+            t_lkl_num = 1 + presig - mu**2 - torch.exp(presig)
+            t_lkl_sum = torch.sum(t_lkl_num)
 
-        Lkl = t_lkl_sum * (-1 / (2 * Nz * batch_size))
+            Lkl = t_lkl_sum * (-1 / (2 * Nz * batch_size))
+        if self.no_cuda:
+            min_value = torch.FloatTensor([0.2])
+        else:
+            min_value = torch.cuda.FloatTensor([0.2])
+        Lkl = torch.max(Lkl, min_value)
 
         Loss = Lr + wkl * Lkl
 
@@ -150,4 +172,4 @@ class SketchRnnLoss(nn.Module):
         print(Loss)
         """
 
-        return Loss
+        return Loss, Lr, Lkl, Ls, Lp

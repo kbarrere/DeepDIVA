@@ -77,14 +77,26 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, wkl = 1, no_
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, wkl)
+        loss, lr, lkl, ls, lp = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, wkl)
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar('train/mb_loss', loss.data.item(), epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_lr', lr.data.item(), epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_lkl', lkl.data.item(), epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_ls', lp.data.item(), epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_ls', lp.data.item(), epoch * len(train_loader) + batch_idx)
             #writer.add_scalar('train/mb_accuracy', acc.cpu().numpy(), epoch * len(train_loader) + batch_idx)
         else:
             writer.add_scalar('train/mb_loss_{}'.format(multi_run), loss.data[0],
+                              epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_lr_{}'.format(multi_run), lr.data[0],
+                              epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_lkl_{}'.format(multi_run), lkl.data[0],
+                              epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_ls_{}'.format(multi_run), ls.data[0],
+                              epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_lp_{}'.format(multi_run), lp.data[0],
                               epoch * len(train_loader) + batch_idx)
             #writer.add_scalar('train/mb_accuracy_{}'.format(multi_run), acc.cpu().numpy(),
             #                   epoch * len(train_loader) + batch_idx)
@@ -125,7 +137,7 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, los
 
     # Compute and record the loss
     # Format of the Sketch Rnn loss
-    loss = criterion(output, target_var, mu, presig, wkl)
+    loss, lr, lkl, ls, lp = criterion(output, target_var, mu, presig, wkl)
     loss_meter.update(loss.data.item(), len(input_var))
 
     # Compute and record the accuracy
@@ -141,4 +153,4 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, los
     optimizer.step()
 
     #return acc, loss
-    return loss
+    return loss, lr, lkl, ls, lp

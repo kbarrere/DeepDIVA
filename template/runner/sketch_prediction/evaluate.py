@@ -106,7 +106,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, wkl =
 
         # Compute and record the loss
         #TODO: wkl ?
-        loss = criterion(output, target_var, mu, presig, wkl)
+        loss, lr, lkl, ls, lp = criterion(output, target_var, mu, presig, wkl)
         losses.update(loss.data.item(), input.size(0))
 
         # Compute and record the accuracy
@@ -120,9 +120,21 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, wkl =
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar(logging_label + '/mb_loss', loss.data.item(), epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_lr', lr.data.item(), epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_lkl', lkl.data.item(), epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_ls', ls.data.item(), epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_lp', lp.data.item(), epoch * len(data_loader) + batch_idx)
             #writer.add_scalar(logging_label + '/mb_accuracy', acc1.cpu().numpy(), epoch * len(data_loader) + batch_idx)
         else:
             writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0],
+                              epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_lr_{}'.format(multi_run), lr.data[0],
+                              epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_lkl_{}'.format(multi_run), lkl.data[0],
+                              epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_ls_{}'.format(multi_run), ls.data[0],
+                              epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_lp_{}'.format(multi_run), lp.data[0],
                               epoch * len(data_loader) + batch_idx)
             #writer.add_scalar(logging_label + '/mb_accuracy_{}'.format(multi_run), acc1.cpu().numpy(),
             #                  epoch * len(data_loader) + batch_idx)
