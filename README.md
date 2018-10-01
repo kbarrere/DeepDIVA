@@ -2,11 +2,11 @@
 
 [Original Repository](https://github.com/DIVA-DIA/DeepDIVA)
 
-This repository main [url](https://github.com/kbarrere/DeepDIVA) 
+[This repository main page](https://github.com/kbarrere/DeepDIVA) 
 
 ## Handwritten Text Recognition Branch
 
-The branch htr aims at developping Handwritten Text Recognition models and training within DeepDIVA.
+The branch [htr](https://github.com/kbarrere/DeepDIVA/tree/htr) aims at developping Handwritten Text Recognition models and training within DeepDIVA.
 
 ## Installation
 
@@ -16,7 +16,7 @@ Clone the Github repository
 git clone https://github.com/kbarrere/DeepDIVA.git
 ```
 
-Switch to the branch htr with PyTorch 0.4 compatibility :
+Switch to the branch [htr](https://github.com/kbarrere/DeepDIVA/tree/htr) with PyTorch 0.4 compatibility :
 
 ``` shell
 git chekout htr
