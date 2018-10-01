@@ -26,11 +26,13 @@ from tensorboardX import SummaryWriter
 import models
 from datasets import image_folder_dataset, bidimensional_dataset
 from util.data.dataset_analytics import compute_mean_std
+from util.data.dataset_integrity import verify_integrity_quick, verify_integrity_deep
 from util.misc import get_all_files_in_folders_and_subfolders
 
 
-def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cuda, resume, load_model, start_epoch,
-                 train_loader, disable_databalancing, dataset_folder, inmem, workers, num_classes=None, **kwargs):
+def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cuda, resume, load_model,
+                 start_epoch, disable_databalancing, dataset_folder, inmem, workers, num_classes=None,
+                 **kwargs):
     """
     Instantiate model, optimizer, criterion. Load a pretrained model or resume from a checkpoint.
 
@@ -38,40 +40,46 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     ----------
     output_channels : int
         Specify shape of final layer of network. Only used if num_classes is not specified.
-
     model_name : string
         Name of the model
-
     pretrained : bool
         Specify whether to load a pretrained model or not
-
     optimizer_name : string
         Name of the optimizer
-
-    lr: float
-        Value for learning rate
-
     no_cuda : bool
         Specify whether to use the GPU or not
-
     resume : string
         Path to a saved checkpoint
-
     load_model : string
         Path to a saved model
-
     start_epoch : int
         Epoch from which to resume training. If if not resuming a previous experiment the value is 0
-
+    disable_databalancing : boolean
+        If True the criterion will not be fed with the class frequencies. Use with care.
+    dataset_folder : String
+        Location of the dataset on the file system
+    inmem : boolean
+        Load the whole dataset in memory. If False, only file names are stored and images are loaded
+        on demand. This is slower than storing everything in memory.
+    workers : int
+        Number of workers to use for the dataloaders
     num_classes: int
         Number of classes for the model
 
-    kwargs: dict
-        Any additional arguments.
-
     Returns
     -------
-        model, criterion, optimizer, best_value, start_epoch
+    model : nn.Module
+        The actual model
+    criterion : nn.loss
+        The criterion for the network
+    optimizer : torch.optim
+        The optimizer for the model
+    best_value : float
+        Specifies the former best value obtained by the model.
+        Relevant only if you are resuming training.
+    start_epoch : int
+        Specifies at which epoch was the model saved.
+        Relevant only if you are resuming training.
     """
 
     # Initialize the model
@@ -125,7 +133,8 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             # val_losses = [checkpoint['val_loss']] #not used?
-            logging.info("Loaded checkpoint '{}' (epoch {})".format(resume, checkpoint['epoch']))
+            logging.info("Loaded checkpoint '{}' (epoch {})"
+                         .format(resume, checkpoint['epoch']))
         else:
             logging.error("No checkpoint found at '{}'".format(resume))
             sys.exit(-1)
@@ -139,20 +148,20 @@ def _load_class_frequencies_weights_from_file(dataset_folder, inmem, workers):
     """
     This function simply recovers class_frequencies_weights from the analytics.csv file
 
-    Parameters:
-    -----------
-    :param dataset_folder: string
+    Parameters
+    ----------
+    dataset_folder : string
         Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
-
-    :param inmem: boolean
+    inmem : boolean
         Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
         on demand. This is slower than storing everything in memory.
-
-    :param workers: int
+    workers : int
         Number of workers to use for the mean/std computation
 
-    :return: double[], double[]
-        Mean and Std of the selected dataset, contained in the analytics.csv file. These are double arrays.
+    Returns
+    -------
+    ndarray[double]
+        Class frequencies for the selected dataset, contained in the analytics.csv file.
     """
     csv_file = _load_analytics_csv(dataset_folder, inmem, workers)
     return csv_file.ix[2, 1:].as_matrix().astype(float)
@@ -163,13 +172,18 @@ def _get_optimizer(optimizer_name, model, **kwargs):
     This function serves as interface between the command line and the optimizer.
     In fact each optimizer has a different set of parameters and in this way one can just change the optimizer
     in his experiments just by changing the parameters passed to the entry point.
-    :param optimizer_name:
+
+    Parameters
+    ----------
+    optimizer_name:
         Name of the optimizers. See: torch.optim for a list of possible values
-    :param model:
+    model:
         The model with which the training will be done
-    :param kwargs:
+    kwargs:
         List of all arguments to be used to init the optimizer
-    :return:
+    Returns
+    -------
+    torch.optim
         The optimizer initialized with the provided parameters
     """
     # Verify the optimizer exists
@@ -185,38 +199,48 @@ def _get_optimizer(optimizer_name, model, **kwargs):
     return torch.optim.__dict__[optimizer_name](model.parameters(), **params)
 
 
-def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, workers, inmem=False, **kwargs):
+def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, workers,
+                       disable_dataset_integrity, enable_deep_dataset_integrity,  inmem=False, **kwargs):
     """
     Set up the dataloaders for the specified datasets.
 
     Parameters
     ----------
-    :param model_expected_input_size: tuple
+    model_expected_input_size : tuple
         Specify the height and width that the model expects.
-
-    :param dataset_folder: string
+    dataset_folder : string
         Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
-
-    :param batch_size: int
+    batch_size : int
         Number of datapoints to process at once
-
-    :param workers: int
+    workers : int
         Number of workers to use for the dataloaders
-
-    :param inmem: boolean
+    inmem : boolean
         Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
         on demand. This is slower than storing everything in memory.
 
-    :param kwargs: dict
-        Any additional arguments.
-
-    :return: dataloader, dataloader, dataloader, int
-        Three dataloaders for train, val and test. Number of classes for the model.
+    Returns
+    -------
+    train_loader : torch.utils.data.DataLoader
+    val_loader : torch.utils.data.DataLoader
+    test_loader : torch.utils.data.DataLoader
+        Dataloaders for train, val and test.
+    int
+        Number of classes for the model.
     """
 
     # Recover dataset name
     dataset = os.path.basename(os.path.normpath(dataset_folder))
     logging.info('Loading {} from:{}'.format(dataset, dataset_folder))
+
+    ###############################################################################################
+    # Verify dataset integrity
+    if not disable_dataset_integrity:
+        if enable_deep_dataset_integrity:
+            if not verify_integrity_deep(dataset_folder):
+                sys.exit(-1)
+        else:
+            if not verify_integrity_quick(dataset_folder):
+                sys.exit(-1)
 
     ###############################################################################################
     # Load the dataset splits as images
@@ -290,20 +314,20 @@ def _load_mean_std_from_file(dataset_folder, inmem, workers):
     """
     This function simply recovers mean and std from the analytics.csv file
 
-    Parameters:
-    -----------
-    :param dataset_folder: string
+    Parameters
+    ----------
+    dataset_folder : string
         Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
-
-    :param inmem: boolean
+    inmem : boolean
         Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
         on demand. This is slower than storing everything in memory.
-
-    :param workers: int
+    workers : int
         Number of workers to use for the mean/std computation
 
-    :return: double[], double[]
-        Mean and Std of the selected dataset, contained in the analytics.csv file. These are double arrays.
+    Returns
+    -------
+    ndarray[double], ndarray[double]
+        Mean and Std of the selected dataset, contained in the analytics.csv file.
     """
     # Loads the analytics csv and extract mean and std
     try:
@@ -320,23 +344,23 @@ def _load_mean_std_from_file(dataset_folder, inmem, workers):
 
 def _load_analytics_csv(dataset_folder, inmem, workers):
     """
-        This function simply loads the analytics.csv file and attempts creating it if it misses
+    This function loads the analytics.csv file and attempts creating it, if it is missing
 
-        Parameters:
-        -----------
-        :param dataset_folder: string
-            Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
+    Parameters
+    ----------
+    dataset_folder : string
+        Path string that points to the three folder train/val/test. Example: ~/../../data/svhn
+    inmem : boolean
+        Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
+        on demand. This is slower than storing everything in memory.
+    workers : int
+        Number of workers to use for the mean/std computation
 
-        :param inmem: boolean
-            Flag: if False, the dataset is loaded in an online fashion i.e. only file names are stored and images are loaded
-            on demand. This is slower than storing everything in memory.
-
-        :param workers: int
-            Number of workers to use for the mean/std computation
-
-        :return:
-            The csv file
-        """
+    Returns
+    -------
+    file
+        The csv file
+    """
     # If analytics.csv file not present, run the analytics on the dataset
     if not os.path.exists(os.path.join(dataset_folder, "analytics.csv")):
         logging.warning('Missing analytics.csv file for dataset located at {}'.format(dataset_folder))
@@ -353,19 +377,24 @@ def _load_analytics_csv(dataset_folder, inmem, workers):
 
 def _dataloaders_from_datasets(batch_size, train_ds, val_ds, test_ds, workers):
     """
+    This function creates (and returns) dataloader from datasets objects
 
-    Parameters:
-    -----------
-    :param batch_size: int
+    Parameters
+    ----------
+    batch_size : int
         The size of the mini batch
-
-    :param train_ds, val_ds, test_ds: torch.utils.data.Dataset
-        The datasets split loaded, ready to be fed to a dataloader
-
-    :param workers:
+    train_ds : data.Dataset
+    val_ds : data.Dataset
+    test_ds : data.Dataset
+        Train, validation and test splits
+    workers:
         Number of workers to use to load the data.
 
-    :return: torch.utils.data.DataLoader[]
+    Returns
+    -------
+    train_loader : torch.utils.data.DataLoader
+    val_loader : torch.utils.data.DataLoader
+    test_loader : torch.utils.data.DataLoader
         The dataloaders for each split passed
     """
     # Setup dataloaders
@@ -393,26 +422,25 @@ def set_up_logging(parser, experiment_name, output_folder, quiet, args_dict, deb
 
     Parameters
     ----------
-    :param parser : parser
+    parser : parser
         The argument parser
-
-    :param experiment_name: string
+    experiment_name : string
         Name of the experiment. If not specify, accepted from command line.
-
-    :param output_folder: string
+    output_folder : string
         Path to where all experiment logs are stored.
-
-    :param quiet: bool
+    quiet : bool
         Specify whether to print log to console or only to text file
-
-    :param debug: bool
+    debug : bool
         Specify the logging level
-
-    :param args_dict: dict
+    args_dict : dict
         Contains the entire argument dictionary specified via command line.
 
-    :return: string
-        log_folder, the final logging folder tree
+    Returns
+    -------
+    log_folder : String
+        The final logging folder tree
+    writer : tensorboardX.writer.SummaryWriter
+        The tensorboard writer object. Used to log values on file for the tensorboard visualization.
     """
     LOG_FILE = 'logs.txt'
 
@@ -502,9 +530,14 @@ def copy_code(output_folder):
     """
     Makes a tar file with DeepDIVA that exists during runtime.
 
-    :param output_folder: str
+    Parameters
+    ----------
+    output_folder : str
         Path to output directory
-    :return: None
+
+    Returns
+    -------
+        None
     """
     # All file extensions to be saved by copy-code.
     FILE_TYPES = ['.sh', '.py']
@@ -533,12 +566,6 @@ def copy_code(output_folder):
     # Clean up all temporary files
     shutil.rmtree(tmp_dir)
 
-    return
-
-
-
-
-
 
 def set_up_env(gpu_id, seed, multi_run, no_cuda, **kwargs):
     """
@@ -546,19 +573,18 @@ def set_up_env(gpu_id, seed, multi_run, no_cuda, **kwargs):
 
     Parameters
     ----------
-    :param gpu_id: string
+    gpu_id : string
         Specify the GPUs to be used
-
-    :param seed:    int
+    seed :    int
         Seed all possible seeds for deterministic run
-
-    :param multi_run: int
+    multi_run : int
         Number of runs over the same code to produce mean-variance graph.
-
-    :param no_cuda: bool
+    no_cuda : bool
         Specify whether to use the GPU or not
 
-    :return: None
+    Returns
+    -------
+        None
     """
     # Set visible GPUs
     if gpu_id is not None:
@@ -592,6 +618,6 @@ def set_up_env(gpu_id, seed, multi_run, no_cuda, **kwargs):
     # Torch random
     torch.manual_seed(seed)
     if not no_cuda:
+
         torch.cuda.manual_seed_all(seed)
 
-    return

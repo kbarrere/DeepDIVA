@@ -218,8 +218,8 @@ def save_image_and_log_to_tensorboard(writer=None, tag=None, image_tensor=None, 
     writer.add_image(tag=tag, img_tensor=image_tensor, global_step=global_step)
 
     # Get output folder using the FileHandler from the logger.
-    # (Assumes only two handlers are attached to the logger)
-    output_folder = os.path.dirname(logging.getLogger().handlers[1].baseFilename)
+    # (Assumes the file handler is the last one)
+    output_folder = os.path.dirname(logging.getLogger().handlers[-1].baseFilename)
 
     if global_step is not None:
         dest_filename = os.path.join(output_folder, 'images', tag + '_{}.png'.format(global_step))
@@ -233,3 +233,24 @@ def save_image_and_log_to_tensorboard(writer=None, tag=None, image_tensor=None, 
     cv2.imwrite(dest_filename, np.roll(image_tensor, 1, axis=-1))
 
     return
+
+def has_extension(filename, extensions):
+    """Checks if a file is an allowed extension.
+
+    Adapted from https://github.com/pytorch/vision/blob/master/torchvision/datasets/folder.py.
+
+    Parameters
+    ----------
+    filename : string
+        path to a file
+    extensions : list
+        extensions to match against
+    Returns
+    -------
+    bool
+        True if the filename ends with one of given extensions, false otherwise.
+    """
+    filename_lower = filename.lower()
+    return any(filename_lower.endswith(ext) for ext in extensions)
+
+
