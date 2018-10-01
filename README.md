@@ -30,6 +30,12 @@ In order to get the framework up and running it is only necessary to clone the l
 git clone https://github.com/DIVA-DIA/DeepDIVA.git
 ```
 
+With my forked repository :
+
+``` shell
+git clone https://github.com/kbarrere/DeepDIVA.git
+```
+
 Run the script:
 
 ``` shell
