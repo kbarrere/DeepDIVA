@@ -124,6 +124,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
                              Acc1='{top1.avg:.3f}\t'.format(top1=top1),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
+    """ temporarily disabled confusion matrix, because of compatibility problem with PyTorch 0.4
     # Make a confusion matrix
     try:
         cm = confusion_matrix(y_true=targets, y_pred=preds)
@@ -143,6 +144,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         save_image_and_log_to_tensorboard(writer, tag=logging_label + '/confusion_matrix_{}'.format(multi_run),
                                           image_tensor=confusion_matrix_heatmap, global_step=epoch)
 
+    """
     logging.info(_prettyprint_logging_label(logging_label) +
                  ' epoch[{}]: '
                  'Acc@1={top1.avg:.3f}\t'
