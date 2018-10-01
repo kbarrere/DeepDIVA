@@ -1,6 +1,6 @@
 # DeepDIVA: A Highly-Functional Python Framework for Reproducible Experiments
 
-Original [Repository](https://github.com/DIVA-DIA/DeepDIVA)
+[Original Repository](https://github.com/DIVA-DIA/DeepDIVA)
 
 This repository main [url](https://github.com/kbarrere/DeepDIVA) 
 
