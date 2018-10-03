@@ -15,7 +15,8 @@ import numpy as np
 import models
 # Delegated
 from template.runner.handwritten_text_recognition import evaluate, train
-from template.setup import set_up_model, set_up_dataloaders
+from template.setup import set_up_model
+from template.runner.handwritten_text_recognition.setup import set_up_dataloaders
 from util.misc import checkpoint, adjust_learning_rate
 
 

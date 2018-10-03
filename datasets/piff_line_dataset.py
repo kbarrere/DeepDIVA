@@ -51,8 +51,8 @@ def load_dataset(piff_json_file, in_memory=False, workers=1):
 
     if in_memory:
         # store all the sketches in memory
-        train_ds = LineImageInMemory(piff_json_file, "train")
-        val_ds = LineImageInMemory(piff_json_file, "val")
+        train_ds = LineImageInMemory(piff_json_file, "training")
+        val_ds = LineImageInMemory(piff_json_file, "validation")
         test_ds = LineImageInMemory(piff_json_file, "test")
 
     else:
@@ -86,17 +86,51 @@ class LineImageInMemory(data.Dataset):
             Number of workers to use for the dataloaders
         """
 
-        if split not in ["train", "valid", "test"]:
+        if split not in ["training", "validation", "test"]:
             logging.error("provided split (" + split + ") is not train, valid or test")
-        sys.exit(-1)
+            sys.exit(-1)
+
+        self.split = split
+        self.image_paths = []
+        self.line_values = []
 
         f = open(piff_json_file, 'r')
         piff_dict = json.load(f)
 
-        for val in piff_dict:
-            print(val)
+        self.line_split_search(piff_dict, False)
 
         f.close()
+
+    def line_split_search(self, dict, is_in_split=False):
+        if is_in_split:
+            if 'type' in dict and dict['type'] == 'line':
+                path = ""
+                if 'path' in dict:
+                    path = dict['path']
+                    print(path)
+
+                value = ""
+                if 'value' in dict:
+                    value = dict['value']
+
+                self.line_values.append(value)
+
+            else:
+                if 'children' in dict:
+                    for child in dict['children']:
+                        self.line_split_search(child, is_in_split=True)
+
+        else:
+            if 'split' in dict:
+                if dict['split'] == self.split:
+                    self.line_split_search(dict, is_in_split=True)
+                else:
+                    return
+            else:
+                if 'children' in dict:
+                    for child in dict['children']:
+                        self.line_split_search(child, is_in_split=False)
+
 
 
     def __getitem__(self, index):

@@ -12,7 +12,7 @@ from datasets.piff_line_dataset import load_dataset
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 
-def setup_dataloaders(model_expected_input_size, piff_json_file, batch_size, workers, inmem, **kwargs):
+def set_up_dataloaders(model_expected_input_size, piff_json, batch_size, workers, inmem, **kwargs):
     """
     Set up the dataloaders for the specified datasets.
 
@@ -20,7 +20,7 @@ def setup_dataloaders(model_expected_input_size, piff_json_file, batch_size, wor
     ----------
     model_expected_input_size : tuple
         Specify the height and width that the model expects.
-    piff_json_file : string
+    piff_json : string
         File describing the dataset following the PiFF format
     batch_size : int
         Number of datapoints to process at once
@@ -40,12 +40,12 @@ def setup_dataloaders(model_expected_input_size, piff_json_file, batch_size, wor
     """
 
     # Recover dataset name
-    file_name = os.path.basename(os.path.normpath(piff_json_file))
-    logging.info('Loading {} from:{}'.format(file_name, piff_json_file))
+    file_name = os.path.basename(os.path.normpath(piff_json))
+    logging.info('Loading {} from:{}'.format(file_name, piff_json))
 
     ###############################################################################################
     # Load the dataset splits as images
-    train_ds, val_ds, test_ds = load_dataset(piff_json_file=piff_json_file,
+    train_ds, val_ds, test_ds = load_dataset(piff_json_file=piff_json,
                                              in_memory=inmem,
                                              workers=workers)
 

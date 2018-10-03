@@ -449,7 +449,9 @@ def set_up_logging(parser, experiment_name, output_folder, quiet, args_dict, deb
         experiment_name = input("Experiment name:")
 
     # Recover dataset name
-    dataset = os.path.basename(os.path.normpath(kwargs['dataset_folder']))
+    dataset = ""
+    if kwargs['dataset_folder']:
+        dataset = os.path.basename(os.path.normpath(kwargs['dataset_folder']))
 
     """
     We extract the TRAIN parameters names (such as model_name, lr, ... ) from the parser directly. 

@@ -33,8 +33,10 @@ def parse_arguments(args=None):
     # Parse argument
     args = parser.parse_args(args)
 
+    dataset = ""
     # Recover dataset name
-    dataset = os.path.basename(os.path.normpath(args.dataset_folder))
+    if args.dataset_folder:
+        dataset = os.path.basename(os.path.normpath(args.dataset_folder))
 
     # If contains 'bd' override the runner class to bidimensional
     if 'bd_' in dataset and args.runner_class == 'image_classification':
@@ -105,7 +107,10 @@ def _data_options(parser):
     parser_data = parser.add_argument_group('DATA', 'Dataset Options')
     parser_data.add_argument('--dataset-folder',
                              help='location of the dataset on the machine e.g root/data',
-                             required=True)
+                             required=False)
+    parser_data.add_argument('--piff-json',
+                             help='File representing a dataset following the PiFF format',
+                             required=False)
     parser_data.add_argument('--inmem',
                              default=False,
                              action='store_true',
