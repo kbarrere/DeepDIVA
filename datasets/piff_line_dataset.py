@@ -50,18 +50,27 @@ def load_dataset(piff_json_file, in_memory=False, workers=1):
     """
 
     if in_memory:
-        # store all the sketches in memory
+        # Store all images and transcription directly in the memory
+
+        logging.error("Loading a PiFF json file and storing images in memeory not implemented !")
+        sys.exit(-1)
+
         train_ds = LineImageInMemory(piff_json_file, "training")
         val_ds = LineImageInMemory(piff_json_file, "validation")
         test_ds = LineImageInMemory(piff_json_file, "test")
 
+        return train_ds, val_ds, test_ds
+
     else:
-        # TODO
-        logging.error("in_memory = False not implemented.")
-    sys.exit(-1)
+        # Store the path to the images in memory and the transcriptions
+        train_ds = LineImageNotInMemory(piff_json_file, "training")
+        val_ds = LineImageNotInMemory(piff_json_file, "validation")
+        test_ds = LineImageNotInMemory(piff_json_file, "test")
+
+        return train_ds, val_ds, test_ds
 
 
-class LineImageInMemory(data.Dataset):
+class LineImageNotInMemory(data.Dataset):
     """
     TODO
     """
@@ -91,6 +100,8 @@ class LineImageInMemory(data.Dataset):
             sys.exit(-1)
 
         self.split = split
+        self.piff_json_file = piff_json_file
+        self.piff_json_folder = self.piff_json_file[:-len(self.piff_json_file.split('/')[-1])]
         self.image_paths = []
         self.line_values = []
 
@@ -98,6 +109,14 @@ class LineImageInMemory(data.Dataset):
         piff_dict = json.load(f)
 
         self.line_split_search(piff_dict, False)
+
+        len_images_path = len(self.image_paths)
+        len_line_values = len(self.line_values)
+
+        if len_images_path != len_line_values:
+            logging.error("Error while loading PiFF Json file !")
+            logging.error("Found " + str(len_images_path) + "image path but " + str(len_line_values) + "line transciptions.")
+            sys.exit(-1)
 
         f.close()
 
@@ -107,7 +126,8 @@ class LineImageInMemory(data.Dataset):
                 path = ""
                 if 'path' in dict:
                     path = dict['path']
-                    print(path)
+
+                self.image_paths.append(self.piff_json_folder + path)
 
                 value = ""
                 if 'value' in dict:
@@ -144,14 +164,17 @@ class LineImageInMemory(data.Dataset):
         Returns
         -------
         img : FloatTensor
-        target : int
-            label of the image
+        target : string
+            transciption of the text inside the image
         """
 
-        img, target = self.data[index], self.labels[index]
+        image_path = self.image_paths[index]
 
-        # Doing this so that it is consistent with all other datasets to return a PIL Image
-        img = Image.fromarray(img)
+        # Weird way to open things due to issue https://github.com/python-pillow/Pillow/issues/835
+        with open(self.file_names[index], 'rb') as f:
+            img = Image.open(f)
+
+        target = self.line_values[index]
 
         if self.transform is not None:
             img = self.transform(img)
@@ -161,85 +184,4 @@ class LineImageInMemory(data.Dataset):
         return img, target
 
     def __len__(self):
-        return len(self.data)
-
-
-class ImageFolderApply(data.Dataset):
-    """
-    TODO fill me
-    """
-
-    def __init__(self, path, transform=None, target_transform=None, classify=False):
-        """
-        TODO fill me
-
-        Parameters
-        ----------
-        path : string
-            Path to the dataset on the file System
-        transform : torchvision.transforms
-            Transformation to apply on the data
-        target_transform : torchvision.transforms
-            Transformation to apply on the labels
-        """
-        self.dataset_folder = os.path.expanduser(path)
-        self.transform = transform
-        self.target_transform = target_transform
-
-        if classify is True:
-            # Get an online dataset
-            dataset = torchvision.datasets.ImageFolder(path)
-
-            # Extract the actual file names and labels as entries
-            self.file_names = np.asarray([item[0] for item in dataset.imgs])
-            self.labels = np.asarray([item[1] for item in dataset.imgs])
-        else:
-            # Get all files in the folder that are images
-            self.file_names = self._get_filenames(self.dataset_folder)
-
-            # Extract the label for each file (assuming standard format of root_folder/class_folder/img.jpg)
-            self.labels = [item.split('/')[-2] for item in self.file_names]
-
-        # Set expected class attributes
-        self.classes = np.unique(self.labels)
-
-    def _get_filenames(self, path):
-        file_names = []
-        for item in get_all_files_in_folders_and_subfolders(path):
-            if has_extension(item, ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif']):
-                file_names.append(item)
-        return file_names
-
-    def __getitem__(self, index):
-        """
-        Retrieve a sample by index and provides its filename as well
-
-        Parameters
-        ----------
-        index : int
-
-        Returns
-        -------
-        img : FloatTensor
-        target : int
-            label of the image
-        filename : string
-        """
-
-        # Weird way to open things due to issue https://github.com/python-pillow/Pillow/issues/835
-        with open(self.file_names[index], 'rb') as f:
-            img = Image.open(f)
-            img = img.convert('RGB')
-
-        target, filename = self.labels[index], self.file_names[index]
-
-        if self.transform is not None:
-            img = self.transform(img)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return img, target, filename
-
-    def __len__(self):
-        return len(self.file_names)
+        return len(self.image_paths)

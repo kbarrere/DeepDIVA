@@ -61,7 +61,7 @@ class HandwrittenTextRecognition:
         logging.info('Model {} expects input size of {}'.format(model_name, model_expected_input_size))
 
         # Setting up the dataloaders
-        train_loader, val_loader, test_loader, num_classes = set_up_dataloaders(model_expected_input_size, **kwargs)
+        train_loader, val_loader, test_loader = set_up_dataloaders(model_expected_input_size, **kwargs)
 
         # Setting up model, optimizer, criterion
         model, criterion, optimizer, best_value, start_epoch = set_up_model(num_classes=num_classes,
