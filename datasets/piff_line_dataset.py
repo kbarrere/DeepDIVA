@@ -178,6 +178,7 @@ class LineImageNotInMemory(data.Dataset):
             img = Image.open(f)
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
+            img = img.resize([128, 1024], Image.ANTIALIAS)
 
         target = self.line_values[index]
 
