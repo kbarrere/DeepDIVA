@@ -99,8 +99,11 @@ class LineImageNotInMemory(data.Dataset):
             logging.error("provided split (" + split + ") is not train, valid or test")
             sys.exit(-1)
 
-        self.split = split
         self.piff_json_file = piff_json_file
+        self.split = split
+        self.transform = transform
+        self.target_transform = target_transform
+
         self.piff_json_folder = self.piff_json_file[:-len(self.piff_json_file.split('/')[-1])]
         self.image_paths = []
         self.line_values = []
@@ -117,6 +120,8 @@ class LineImageNotInMemory(data.Dataset):
             logging.error("Error while loading PiFF Json file !")
             logging.error("Found " + str(len_images_path) + "image path but " + str(len_line_values) + "line transciptions.")
             sys.exit(-1)
+
+        logging.info("Loaded " + str(self.__len__()) + " lines for the " + self.split + " split.")
 
         f.close()
 
@@ -168,11 +173,11 @@ class LineImageNotInMemory(data.Dataset):
             transciption of the text inside the image
         """
 
-        image_path = self.image_paths[index]
-
         # Weird way to open things due to issue https://github.com/python-pillow/Pillow/issues/835
-        with open(self.file_names[index], 'rb') as f:
+        with open(self.image_paths[index], 'rb') as f:
             img = Image.open(f)
+            # Copy the image to avoid bug when the file is closed later
+            img = img.copy()
 
         target = self.line_values[index]
 
