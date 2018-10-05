@@ -62,7 +62,7 @@ class HandwrittenTextRecognition:
 
         # Setting up the dataloaders
         train_loader, val_loader, test_loader = set_up_dataloaders(model_expected_input_size, **kwargs)
-        num_classes = 58 # TODO : just temp !
+        num_classes = 2 # TODO : just temp !
 
         # Setting up model, optimizer, criterion
         model, criterion, optimizer, best_value, start_epoch = set_up_model(num_classes=num_classes,

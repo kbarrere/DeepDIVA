@@ -4,20 +4,14 @@ Load a dataset of images by specifying the folder where its located.
 
 # Utils
 import logging
-import os
 import sys
-from multiprocessing import Pool
-import cv2
+import json
 import numpy as np
 
 # Torch related stuff
 import torch.utils.data as data
-import torchvision
 from PIL import Image
-
-from util.misc import get_all_files_in_folders_and_subfolders, has_extension
-
-import json
+import torch
 
 
 def load_dataset(piff_json_file, in_memory=False, workers=1):
@@ -121,6 +115,10 @@ class LineImageNotInMemory(data.Dataset):
             logging.error("Found " + str(len_images_path) + "image path but " + str(len_line_values) + "line transciptions.")
             sys.exit(-1)
 
+        # TODO remove, temp classification task to test
+        self.labels = ['P' in item for item in self.line_values]
+        self.classes = np.unique(self.labels)
+
         logging.info("Loaded " + str(self.__len__()) + " lines for the " + self.split + " split.")
 
         f.close()
@@ -178,9 +176,17 @@ class LineImageNotInMemory(data.Dataset):
             img = Image.open(f)
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
-            img = img.resize([128, 1024], Image.ANTIALIAS)
+            img = img.resize([227, 227], Image.ANTIALIAS) # TODO remove
 
-        target = self.line_values[index]
+        #target = self.line_values[index]
+
+        #target = torch.LongTensor([0])
+        target = 0
+        # TODO Remove
+        if 'P' in self.line_values[index]:
+            #target = torch.LongTensor([1])
+            target = 1
+
 
         if self.transform is not None:
             img = self.transform(img)

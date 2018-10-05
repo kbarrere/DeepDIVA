@@ -61,6 +61,16 @@ def set_up_dataloaders(model_expected_input_size, piff_json, batch_size, workers
     val_ds.transform = transform
     test_ds.transform = transform
 
+    """
+    target_transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+
+    train_ds.target_transform = target_transform
+    val_ds.target_transform = target_transform
+    test_ds.target_transform = target_transform
+    """
+
     train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size=batch_size,
                                                                        train_ds=train_ds,
                                                                        val_ds=val_ds,
