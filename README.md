@@ -25,7 +25,7 @@ cd DeepDIVA
 Switch to the branch [htr](https://github.com/kbarrere/DeepDIVA/tree/htr) with PyTorch 0.4 compatibility :
 
 ``` shell
-git chekout htr
+git checkout htr
 ```
 
 It is using a fixed commit from the original repository (kind of a Beta build for PyTorch 0.4)
