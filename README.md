@@ -16,6 +16,12 @@ Clone the Github repository
 git clone https://github.com/kbarrere/DeepDIVA.git
 ```
 
+Go inside the cloned repository
+
+``` shell
+cd DeepDIVA
+```
+
 Switch to the branch [htr](https://github.com/kbarrere/DeepDIVA/tree/htr) with PyTorch 0.4 compatibility :
 
 ``` shell
