@@ -102,7 +102,7 @@ class LineImageNotInMemory(data.Dataset):
         self.image_paths = []
         self.line_values = []
 
-        f = open(piff_json_file, 'r')
+        f = open(piff_json_file, 'r', encoding='utf-8')
         piff_dict = json.load(f)
 
         self.line_split_search(piff_dict, False)
