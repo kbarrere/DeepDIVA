@@ -60,7 +60,7 @@ python template/RunMe.py --output-folder log --dataset-folder toy_dataset/MNIST 
 
 ## Common Installation problems
 
-If when trying to run a script you end up with an error that looks like `ImportError: No module names '<module name>` , a solution is to export the current directory to the list of python scripts :
+If when trying to run a script you end up with an error that looks like `ImportError: No module names '<module name>'` , a solution is to export the current directory to the list of python scripts :
 
 ``` shell
 export PYTHONPATH="/path/to/DeepDiva:$PYTHONPATH"
