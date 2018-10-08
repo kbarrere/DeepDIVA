@@ -58,6 +58,8 @@ Train a simple Convolutional Neural Network on the MNIST dataset using the comma
 python template/RunMe.py --output-folder log --dataset-folder toy_dataset/MNIST --lr 0.1 --ignoregit --disable-dataset-integrity  --no-cuda
 ```
 
+You can try to do a training on a GPU by removing the `--no-cuda` flag.
+
 ## Common Installation problems
 
 If when trying to run a script you end up with an error that looks like `ImportError: No module names '<module name>'` , a solution is to export the current directory to the list of python scripts :
