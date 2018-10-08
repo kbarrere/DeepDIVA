@@ -67,3 +67,11 @@ If when trying to run a script you end up with an error that looks like `ImportE
 ``` shell
 export PYTHONPATH="/path/to/DeepDiva:$PYTHONPATH"
 ```
+
+## Running The Handwritten Text Recognition Task
+
+If everything work, you can start to work with this command (still in development) :
+
+``` shell
+command here
+```
