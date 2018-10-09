@@ -1,13 +1,7 @@
-"""
-Model definition adapted from: https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py
-"""
-
 import logging
 
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
-
-model_urls = {'alexnet': 'https://download.pytorch.org/models/alexnet-owt-4df8aa71.pth', }
 
 
 class Flatten(nn.Module):
@@ -23,9 +17,8 @@ class Flatten(nn.Module):
         return x
 
 
-class _AlexNet(nn.Module):
+class _CRNN(nn.Module):
     r"""
-    AlexNet model architecture from the `"One weird trick..." <https://arxiv.org/abs/1404.5997>`_ paper.
 
     Attributes
     ----------
@@ -53,9 +46,7 @@ class _AlexNet(nn.Module):
         output_channels : int
             Number of neurons in the last layer
         """
-        super(_AlexNet, self).__init__()
-
-        self.expected_input_size = (227, 227)
+        super(_CRNN, self).__init__()
 
         # Convolutional layers
         self.conv1 = nn.Sequential(
@@ -126,19 +117,12 @@ class _AlexNet(nn.Module):
         return x
 
 
-def alexnet(pretrained=False, **kwargs):
+def crnn(**kwargs):
     """
-    Returns an AlexNet model, possibly ImageNet pretrained.
+    Returns a CRNN model.
 
     Parameters
     ----------
-    pretrained : bool
-        If True, returns a model pre-trained on ImageNet
     """
-    model = _AlexNet(**kwargs)
-    if pretrained:
-        try:
-            model.load_state_dict(model_zoo.load_url(model_urls['alexnet']), strict=False)
-        except Exception as exp:
-            logging.warning(exp)
+    model = _CRNN(**kwargs)
     return model

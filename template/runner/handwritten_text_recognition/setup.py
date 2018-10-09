@@ -12,7 +12,7 @@ from datasets.piff_line_dataset import load_dataset
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 
-def set_up_dataloaders(model_expected_input_size, piff_json, batch_size, workers, inmem, **kwargs):
+def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     """
     Set up the dataloaders for the specified datasets.
 

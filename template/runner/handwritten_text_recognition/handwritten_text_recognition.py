@@ -55,13 +55,9 @@ class HandwrittenTextRecognition:
         test_value : float
             Accuracy value for test split
         """
-        # Get the selected model input size
-        model_expected_input_size = models.__dict__[model_name]().expected_input_size
-        HandwrittenTextRecognition._validate_model_input_size(model_expected_input_size, model_name)
-        logging.info('Model {} expects input size of {}'.format(model_name, model_expected_input_size))
 
         # Setting up the dataloaders
-        train_loader, val_loader, test_loader = set_up_dataloaders(model_expected_input_size, **kwargs)
+        train_loader, val_loader, test_loader = set_up_dataloaders(**kwargs)
         num_classes = 2 # TODO : just temp !
 
         # Setting up model, optimizer, criterion
@@ -93,31 +89,6 @@ class HandwrittenTextRecognition:
         logging.info('Training completed')
 
         return train_value, val_value, test_value
-
-    ####################################################################################################################
-    @staticmethod
-    def _validate_model_input_size(model_expected_input_size, model_name):
-        """
-        This method verifies that the model expected input size is a tuple of 2 elements.
-        This is necessary to avoid confusion with models which run on other types of data.
-
-        Parameters
-        ----------
-        model_expected_input_size
-            The item retrieved from the model which corresponds to the expected input size
-        model_name : String
-            Name of the model (logging purpose only)
-
-        Returns
-        -------
-            None
-        """
-        if type(model_expected_input_size) is not tuple or len(model_expected_input_size) != 2:
-            logging.error('Model {model_name} expected input size is not a tuple. '
-                          'Received: {model_expected_input_size}'
-                          .format(model_name=model_name,
-                                  model_expected_input_size=model_expected_input_size))
-            sys.exit(-1)
 
     ####################################################################################################################
     """
