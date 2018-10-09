@@ -174,9 +174,12 @@ class LineImageNotInMemory(data.Dataset):
         # Weird way to open things due to issue https://github.com/python-pillow/Pillow/issues/835
         with open(self.image_paths[index], 'rb') as f:
             img = Image.open(f)
+            width, height = img.size
+            target_height = 128
+            target_width = int(target_height * width / height)
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
-            img = img.resize([227, 227], Image.ANTIALIAS)  # TODO remove
+            img = img.resize([target_width, target_height], Image.ANTIALIAS)  # TODO remove
 
         # target = self.line_values[index]
 
