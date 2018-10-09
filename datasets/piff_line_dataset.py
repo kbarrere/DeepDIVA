@@ -11,7 +11,6 @@ import numpy as np
 # Torch related stuff
 import torch.utils.data as data
 from PIL import Image
-import torch
 
 
 def load_dataset(piff_json_file, in_memory=False, workers=1):
@@ -174,12 +173,16 @@ class LineImageNotInMemory(data.Dataset):
         # Weird way to open things due to issue https://github.com/python-pillow/Pillow/issues/835
         with open(self.image_paths[index], 'rb') as f:
             img = Image.open(f)
+            # Copy the image to avoid bug when the file is closed later
+            img = img.copy()
+            """
             width, height = img.size
             target_height = 128
             target_width = int(target_height * width / height)
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
             img = img.resize([target_width, target_height], Image.ANTIALIAS)  # TODO remove
+            """
 
         # target = self.line_values[index]
 
