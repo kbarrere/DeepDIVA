@@ -20,7 +20,7 @@ from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 import models
 from template.setup import _get_optimizer
 
-from template.runner.handwritten_text_recognition.transforms import ResizeHeight
+from template.runner.handwritten_text_recognition.transforms import ResizeHeight, PadRight
 
 def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     """
@@ -64,7 +64,8 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     logging.debug('Setting up dataset transforms')
 
     transform = transforms.Compose([
-        ResizeHeight(),
+        ResizeHeight(128),
+        PadRight(2048),
         transforms.ToTensor()
     ])
 

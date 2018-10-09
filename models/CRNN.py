@@ -78,7 +78,7 @@ class _CRNN(nn.Module):
         # Fully connected layers
         self.fc1 = nn.Sequential(
             Flatten(),
-            nn.Linear(256 * 6 * 6, 4096),
+            nn.Linear(325000, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
         )
