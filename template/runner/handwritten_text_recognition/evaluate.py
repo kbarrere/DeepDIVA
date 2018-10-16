@@ -71,6 +71,13 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     preds = []
     targets = []
 
+    """
+    nbr_0_0 = 0
+    nbr_0_1 = 0
+    nbr_1_0 = 0
+    nbr_1_1 = 0
+    """
+
     pbar = tqdm(enumerate(data_loader), total=len(data_loader), unit='batch', ncols=150, leave=False)
     for batch_idx, (input, target) in pbar:
 
@@ -89,6 +96,22 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         # Compute output
         output = model(input_var)
 
+        """
+        for i in range(len(target)):
+            targ = target[i]
+            classif = 0
+            if output[i][1] > output[i][0]:
+                classif = 1
+
+            if targ == 0 and classif == 0:
+                nbr_0_0 += 1
+            elif targ == 0 and classif == 1:
+                nbr_0_1 += 1
+            elif targ == 1 and classif == 0:
+                nbr_1_0 += 1
+            elif targ == 1 and classif == 1:
+                nbr_1_1 += 1
+        """
         # Compute and record the loss
         loss = criterion(output, target_var)
         losses.update(loss.data[0], input.size(0))
@@ -123,6 +146,13 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
                              Loss='{loss.avg:.4f}\t'.format(loss=losses),
                              Acc1='{top1.avg:.3f}\t'.format(top1=top1),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
+
+    """
+    logging.info("Has no P and predicted no P : " + str(nbr_0_0))
+    logging.info("Has no P but predicted a P : " + str(nbr_0_1))
+    logging.info("Has a P but predicted no P : " + str(nbr_1_0))
+    logging.info("Has a P and predicted a P : " + str(nbr_1_1))
+    """
 
     """ temporarily disabled confusion matrix, because of compatibility problem with PyTorch 0.4
     # Make a confusion matrix

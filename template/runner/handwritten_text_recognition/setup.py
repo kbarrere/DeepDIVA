@@ -14,7 +14,8 @@ import torch.optim
 import torch.utils.data
 
 # DeepDIVA
-from datasets.piff_line_dataset import load_dataset
+#from datasets.piff_line_dataset import load_dataset
+from datasets.piff_word_dataset import load_dataset
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 import models
@@ -63,9 +64,17 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
 
+    """
     transform = transforms.Compose([
         ResizeHeight(128),
         PadRight(2048),
+        transforms.ToTensor()
+    ])
+    """
+
+    transform = transforms.Compose([
+        ResizeHeight(80),
+        PadRight(512),
         transforms.ToTensor()
     ])
 

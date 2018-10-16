@@ -44,11 +44,12 @@ class _CRNN(nn.Module):
     conv4 : torch.nn.Sequential
     conv5 : torch.nn.Sequential
         Convolutional layers of the network
-    fc1 : torch.nn.Linear
-    fc2 : torch.nn.Linear
-        Fully connected layer
-    cl : torch.nn.Linear
-        Final classification fully connected layer
+
+    collapse :
+        Collecting features among the horizontal axis
+
+
+
     """
 
     def __init__(self, output_channels=1000):
@@ -61,6 +62,8 @@ class _CRNN(nn.Module):
             Number of neurons in the last layer
         """
         super(_CRNN, self).__init__()
+
+        self.expected_input_size = (64, 64)
 
         # Convolutional layers
         self.conv1 = nn.Sequential(
@@ -95,31 +98,21 @@ class _CRNN(nn.Module):
             nn.BatchNorm2d(128)
         )
 
-        """
-        # Fully connected layers
+        self.collapse = nn.Sequential(
+            Collapse(height=11, width=4),
+            Flatten()
+        )
+
         self.fc1 = nn.Sequential(
-            Flatten(),
-            nn.Linear(325000, 4096),
-            nn.ReLU(inplace=True),
+            nn.Linear(3840, 512),
+            nn.ReLU(),
             nn.Dropout(),
         )
-        self.fc2 = nn.Sequential(
-            nn.Linear(4096, 4096),
-            nn.ReLU(inplace=True),
+
+        self.cl = nn.Sequential(
+            nn.Linear(512, output_channels)
         )
 
-        # Classification layer
-        self.cl = nn.Sequential(
-            nn.Linear(4096, output_channels),
-        )
-        """
-
-        # Classification layer
-        self.cl = nn.Sequential(
-            Collapse(height=23, width=505),
-            Flatten(),
-            nn.Linear(128, output_channels),
-        )
 
     def forward(self, x):
         """
@@ -140,11 +133,12 @@ class _CRNN(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-        """
+
+        x = self.collapse(x)
+
         x = self.fc1(x)
-        x = self.fc2(x)
-        """
         x = self.cl(x)
+
         return x
 
 
