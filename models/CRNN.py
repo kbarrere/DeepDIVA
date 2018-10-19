@@ -99,18 +99,20 @@ class _CRNN(nn.Module):
         )
 
         self.collapse = nn.Sequential(
-            Collapse(height=23, width=1),
-            Flatten()
+            Collapse(height=11, width=4)
         )
 
+        self.lstm = nn.LSTM(128, 128, num_layers=2, batch_first=True, dropout=0.5, bidirectional=True)
+
         self.fc1 = nn.Sequential(
-            nn.Linear(3840, 512),
+            Flatten(),
+            nn.Linear(7680, 704),
             nn.ReLU(),
-            nn.Dropout(),
+            nn.Dropout()
         )
 
         self.cl = nn.Sequential(
-            nn.Linear(512, output_channels)
+            nn.Linear(704, output_channels)
         )
 
 
@@ -135,6 +137,12 @@ class _CRNN(nn.Module):
         x = self.conv5(x)
 
         x = self.collapse(x)
+
+        x = x.permute(0, 2, 1)
+
+        x, _ = self.lstm(x)
+
+        x = x.contiguous()
 
         x = self.fc1(x)
         x = self.cl(x)
