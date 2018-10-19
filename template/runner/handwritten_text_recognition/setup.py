@@ -13,6 +13,9 @@ import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 
+#CTC Loss
+from warpctc_pytorch import CTCLoss
+
 # DeepDIVA
 #from datasets.piff_line_dataset import load_dataset
 from datasets.piff_word_dataset import load_dataset
@@ -163,6 +166,8 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     optimizer = _get_optimizer(optimizer_name, model, **kwargs)
 
     # Get the criterion
+    
+    """
     if disable_databalancing:
         criterion = nn.CrossEntropyLoss()
     else:
@@ -173,7 +178,9 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
         except:
             logging.warning('Unable to load information for data balancing. Using normal criterion')
             criterion = nn.CrossEntropyLoss()
-
+	"""
+    criterion = CTCLoss()
+	
     # Transfer model to GPU (if desired)
     if not no_cuda:
         logging.info('Transfer model to GPU')
