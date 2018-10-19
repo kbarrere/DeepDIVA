@@ -99,9 +99,11 @@ class _CRNN(nn.Module):
         )
 
         self.collapse = nn.Sequential(
-            Collapse(height=11, width=4),
+            Collapse(height=23, width=1),
             Flatten()
         )
+
+		self.lstm = nn.LSTM(128, 128, num_layers=2, batch_first=True, dropout=0.5, bidirectional=True)
 
         self.fc1 = nn.Sequential(
             nn.Linear(3840, 512),
