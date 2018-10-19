@@ -114,10 +114,6 @@ class LineImageNotInMemory(data.Dataset):
             logging.error("Found " + str(len_images_path) + "image path but " + str(len_line_values) + "line transciptions.")
             sys.exit(-1)
 
-        # TODO remove, temp classification task to test
-        self.labels = ['P' in item for item in self.line_values]
-        self.classes = np.unique(self.labels)
-
         logging.info("Loaded " + str(self.__len__()) + " lines for the " + self.split + " split.")
 
         f.close()
@@ -184,14 +180,7 @@ class LineImageNotInMemory(data.Dataset):
             img = img.resize([target_width, target_height], Image.ANTIALIAS)  # TODO remove
             """
 
-        # target = self.line_values[index]
-
-        # target = torch.LongTensor([0])
-        target = 0
-        # TODO Remove
-        if 'P' in self.line_values[index]:
-            # target = torch.LongTensor([1])
-            target = 1
+        target = self.line_values[index]
 
         if self.transform is not None:
             img = self.transform(img)

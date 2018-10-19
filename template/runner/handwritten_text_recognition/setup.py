@@ -17,14 +17,15 @@ import torch.utils.data
 from warpctc_pytorch import CTCLoss
 
 # DeepDIVA
-#from datasets.piff_line_dataset import load_dataset
-from datasets.piff_word_dataset import load_dataset
+from datasets.piff_line_dataset import load_dataset
+#from datasets.piff_word_dataset import load_dataset
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 import models
 from template.setup import _get_optimizer
 
 from template.runner.handwritten_text_recognition.transforms import ResizeHeight, PadRight
+from template.runner.handwritten_text_recognition.text_string_transforms import EsposallesCharToCTCLabel, PadToFixedSize, CTCLabelToTensor
 
 def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     """
@@ -67,33 +68,33 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
 
-    """
     transform = transforms.Compose([
         ResizeHeight(128),
         PadRight(2048),
         transforms.ToTensor()
     ])
     """
-
     transform = transforms.Compose([
         ResizeHeight(80),
         PadRight(512),
         transforms.ToTensor()
     ])
-
+	"""
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform
 
-    """
+    
     target_transform = transforms.Compose([
-        transforms.ToTensor()
+		EsposallesCharToCTCLabel(),
+		PadToFixedSize(128),
+        CTCLabelToTensor()
     ])
 
     train_ds.target_transform = target_transform
     val_ds.target_transform = target_transform
     test_ds.target_transform = target_transform
-    """
+    
 
     train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size=batch_size,
                                                                        train_ds=train_ds,
