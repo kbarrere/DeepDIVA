@@ -53,7 +53,6 @@ class EsposallesCharToCTCLabel(object):
 
     def esposalles_char_to_ctc_label(self, text):
         label = []
-        logging.info(str(text))
         for c in text:
             label.append(self.dic.get(c))
         return label

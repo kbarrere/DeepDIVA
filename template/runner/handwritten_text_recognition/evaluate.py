@@ -113,12 +113,24 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
                 nbr_1_1 += 1
         """
         # Compute and record the loss
-        loss = criterion(output, target_var)
+        batch_size = len(output)
+        
+        acts = output.transpose(0, 1).contiguous()
+        
+        labels = target_var.view(-1)
+        labels = labels.type(torch.IntTensor)
+        
+        act_lens = torch.IntTensor([505] * batch_size)
+        label_lens = torch.IntTensor([128] * batch_size)
+        
+        loss = criterion(acts, labels, act_lens, label_lens)
         losses.update(loss.data[0], input.size(0))
 
         # Compute and record the accuracy
+        """
         acc1 = accuracy(output.data, target, topk=(1,))[0]
         top1.update(acc1[0], input.size(0))
+        """
 
         # Get the predictions
         _ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
@@ -127,12 +139,16 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar(logging_label + '/mb_loss', loss.data[0], epoch * len(data_loader) + batch_idx)
+            """
             writer.add_scalar(logging_label + '/mb_accuracy', acc1.cpu().numpy(), epoch * len(data_loader) + batch_idx)
+            """
         else:
             writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0],
                               epoch * len(data_loader) + batch_idx)
+            """
             writer.add_scalar(logging_label + '/mb_accuracy_{}'.format(multi_run), acc1.cpu().numpy(),
                               epoch * len(data_loader) + batch_idx)
+            """
 
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -144,7 +160,6 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
 
             pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
                              Loss='{loss.avg:.4f}\t'.format(loss=losses),
-                             Acc1='{top1.avg:.3f}\t'.format(top1=top1),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
     """
@@ -177,13 +192,12 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     """
     logging.info(_prettyprint_logging_label(logging_label) +
                  ' epoch[{}]: '
-                 'Acc@1={top1.avg:.3f}\t'
                  'Loss={loss.avg:.4f}\t'
                  'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
                  .format(epoch, batch_time=batch_time, data_time=data_time, loss=losses, top1=top1))
 
     # Generate a classification report for each epoch
-    _log_classification_report(data_loader, epoch, preds, targets, writer)
+    #_log_classification_report(data_loader, epoch, preds, targets, writer)
 
     return top1.avg
 
