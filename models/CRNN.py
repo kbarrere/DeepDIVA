@@ -99,7 +99,7 @@ class _CRNN(nn.Module):
         )
 
         self.collapse = nn.Sequential(
-            Collapse(height=11, width=4),
+            Collapse(height=23, width=1),
             Flatten()
         )
 
