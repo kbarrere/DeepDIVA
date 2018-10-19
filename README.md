@@ -73,5 +73,5 @@ export PYTHONPATH="/path/to/DeepDiva:$PYTHONPATH"
 If everything work, you can start to work with this command (still in development) :
 
 ``` shell
-python template/RunMe.py --runner-class handwritten_text_recognition --output-folder log --piff-json <path to the dataset> --lr 0.1 --ignoregit --disable-dataset-integrity --model-name alexnet
+python template/RunMe.py --runner-class handwritten_text_recognition --output-folder log --piff-json <path/to/file.json> --lr 0.1 --ignoregit --disable-dataset-integrity --model-name crnn --batch-size 256 --epochs 20000
 ```
