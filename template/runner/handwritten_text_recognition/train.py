@@ -1,6 +1,7 @@
 # Utils
 import logging
 import time
+import math
 
 # Torch related stuff
 import torch
@@ -54,7 +55,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     # Iterate over whole training set
     end = time.time()
     pbar = tqdm(enumerate(train_loader), total=len(train_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target) in pbar:
+    for batch_idx, (input, target, target_len) in pbar:
 
         # Measure data loading time
         data_time.update(time.time() - end)
@@ -68,7 +69,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        acc, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, acc_meter)
+        acc, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, loss_meter, acc_meter)
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
@@ -110,7 +111,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     return acc_meter.avg
 
 
-def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, loss_meter, acc_meter):
+def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, loss_meter, acc_meter):
     """
     This routing train the model passed as parameter for one mini-batch
 
@@ -150,9 +151,10 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, los
     labels = labels.type(torch.IntTensor)
 
     act_lens = torch.IntTensor([505] * batch_size)
-    label_lens = torch.IntTensor([128] * batch_size)
+    label_lens = target_len.type(torch.IntTensor)
 
     loss = criterion(acts, labels, act_lens, label_lens)
+    
     loss_meter.update(loss.data[0], len(input_var))
 
     # Compute and record the accuracy
@@ -161,7 +163,11 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, los
     acc_meter.update(acc[0], len(input_var))
     """
     acc = 0
-
+    
+    # Gradient Clipping
+    if loss.data[0] > 1 or math.isnan(loss.data[0]):
+        loss.data[0] = 1
+        
     # Reset gradient
     optimizer.zero_grad()
     # Compute gradients

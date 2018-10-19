@@ -79,7 +79,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     """
 
     pbar = tqdm(enumerate(data_loader), total=len(data_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target) in pbar:
+    for batch_idx, (input, target, target_len) in pbar:
 
         # Measure data loading time
         data_time.update(time.time() - end)
@@ -121,8 +121,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         labels = labels.type(torch.IntTensor)
         
         act_lens = torch.IntTensor([505] * batch_size)
-        label_lens = torch.IntTensor([128] * batch_size)
-        
+        label_lens = target_len.type(torch.IntTensor)
         loss = criterion(acts, labels, act_lens, label_lens)
         losses.update(loss.data[0], input.size(0))
 

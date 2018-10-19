@@ -181,13 +181,14 @@ class LineImageNotInMemory(data.Dataset):
             """
 
         target = self.line_values[index]
+        target_len = len(target)
 
         if self.transform is not None:
             img = self.transform(img)
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, target
+        return img, target, target_len
 
     def __len__(self):
         return len(self.image_paths)

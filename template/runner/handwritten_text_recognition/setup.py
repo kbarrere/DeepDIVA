@@ -87,7 +87,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     
     target_transform = transforms.Compose([
 		EsposallesCharToCTCLabel(),
-		PadToFixedSize(128),
+		PadToFixedSize(98),
         CTCLabelToTensor()
     ])
 
