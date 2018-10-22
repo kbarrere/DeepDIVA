@@ -14,6 +14,8 @@ from util.evaluation.metrics import accuracy
 from util.misc import AverageMeter, _prettyprint_logging_label, save_image_and_log_to_tensorboard
 from util.visualization.confusion_matrix_heatmap import make_heatmap
 
+from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence
+
 
 def validate(val_loader, model, criterion, writer, epoch, no_cuda=False, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to validate the model."""
@@ -71,16 +73,9 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     preds = []
     targets = []
 
-    """
-    nbr_0_0 = 0
-    nbr_0_1 = 0
-    nbr_1_0 = 0
-    nbr_1_1 = 0
-    """
-
     pbar = tqdm(enumerate(data_loader), total=len(data_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target, target_len) in pbar:
-
+    for batch_idx, (input, target, target_len, image_width) in pbar:
+        
         # Measure data loading time
         data_time.update(time.time() - end)
 
@@ -95,23 +90,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
 
         # Compute output
         output = model(input_var)
-
-        """
-        for i in range(len(target)):
-            targ = target[i]
-            classif = 0
-            if output[i][1] > output[i][0]:
-                classif = 1
-
-            if targ == 0 and classif == 0:
-                nbr_0_0 += 1
-            elif targ == 0 and classif == 1:
-                nbr_0_1 += 1
-            elif targ == 1 and classif == 0:
-                nbr_1_0 += 1
-            elif targ == 1 and classif == 1:
-                nbr_1_1 += 1
-        """
+        
         # Compute and record the loss
         batch_size = len(output)
         
@@ -122,16 +101,24 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         labels = labels[labels.nonzero()] # Remove padding
         labels = labels.view(-1)
         
+        # Only use activation before zero padding
+        image_width = image_width.type(torch.IntTensor)
+        acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
         
-        act_lens = torch.IntTensor([acts.size()[0]] * batch_size)
-        label_lens = target_len.type(torch.IntTensor)
-        """
-        logging.info("Acts : " + str(acts))
-        logging.info("Label : " + str(labels))
-        logging.info("Label len : " + str(label_lens))
-        logging.info("--------------------------------------------------")
-        """
-        loss = criterion(acts, labels, act_lens, label_lens)
+        labels_len = target_len.type(torch.IntTensor)
+        
+        # Temp
+        if batch_idx == 0:
+            probs = output.clone()
+            probs = probs.detach()
+            #logging.info("Output: " + str(probs))
+            #logging.info("Image width: " + str(image_width))
+            #logging.info("acts_len: " + str(acts_len))
+            logging.info("Predicted Sequence: " + str(sample_text(probs)))
+            #logging.info("Int: " + str(target_var))
+            logging.info("True labels: " + str(convert_batch_to_sequence(target_var)))
+        
+        loss = criterion(acts, labels, acts_len, labels_len)
         
         losses.update(loss.data[0], input.size(0))
 
@@ -170,13 +157,6 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
             pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
                              Loss='{loss.avg:.4f}\t'.format(loss=losses),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
-
-    """
-    logging.info("Has no P and predicted no P : " + str(nbr_0_0))
-    logging.info("Has no P but predicted a P : " + str(nbr_0_1))
-    logging.info("Has a P but predicted no P : " + str(nbr_1_0))
-    logging.info("Has a P and predicted a P : " + str(nbr_1_1))
-    """
 
     """ temporarily disabled confusion matrix, because of compatibility problem with PyTorch 0.4
     # Make a confusion matrix

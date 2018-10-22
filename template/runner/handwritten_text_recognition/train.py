@@ -55,7 +55,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     # Iterate over whole training set
     end = time.time()
     pbar = tqdm(enumerate(train_loader), total=len(train_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target, target_len) in pbar:
+    for batch_idx, (input, target, target_len, image_width) in pbar:
 
         # Measure data loading time
         data_time.update(time.time() - end)
@@ -69,7 +69,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        acc, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, loss_meter, acc_meter)
+        acc, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, loss_meter, acc_meter)
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
@@ -111,7 +111,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     return acc_meter.avg
 
 
-def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, loss_meter, acc_meter):
+def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, loss_meter, acc_meter):
     """
     This routing train the model passed as parameter for one mini-batch
 
@@ -151,11 +151,14 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     labels = labels.type(torch.IntTensor)
     labels = labels[labels.nonzero()] # Remove padding
     labels = labels.view(-1)
-
-    act_lens = torch.IntTensor([acts.size()[0]] * batch_size)
-    label_lens = target_len.type(torch.IntTensor)
     
-    loss = criterion(acts, labels, act_lens, label_lens)
+    # Only use activation before zero padding
+    image_width = image_width.type(torch.IntTensor)
+    acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
+    
+    labels_len = target_len.type(torch.IntTensor)
+    
+    loss = criterion(acts, labels, acts_len, labels_len)
     
     loss_meter.update(loss.data[0], len(input_var))
 
@@ -165,10 +168,6 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     acc_meter.update(acc[0], len(input_var))
     """
     acc = 0
-    
-    # Gradient Clipping
-    #if loss.data[0] > 1 / batch_size or math.isnan(loss.data[0]):
-    #    loss.data[0] = 1 / batch_size
         
     # Reset gradient
     optimizer.zero_grad()

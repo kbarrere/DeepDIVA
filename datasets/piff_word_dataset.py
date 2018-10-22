@@ -246,6 +246,8 @@ class WordImageNotInMemory(data.Dataset):
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
         
+        image_width, image_height = img.size
+        
         target = self.word_values[index]
         target_len = len(target)
 
@@ -254,7 +256,7 @@ class WordImageNotInMemory(data.Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, target, target_len
+        return img, target, target_len, image_width
 
 
     def __len__(self):
