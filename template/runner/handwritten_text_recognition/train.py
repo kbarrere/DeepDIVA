@@ -155,6 +155,9 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
 
     loss = criterion(acts, labels, act_lens, label_lens)
     
+    # Normalizze the loss by the batch size to reduce the hight values of the loss
+    loss.data[0] = loss.data[0] / batch_size
+    
     loss_meter.update(loss.data[0], len(input_var))
 
     # Compute and record the accuracy

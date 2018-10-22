@@ -123,6 +123,10 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         act_lens = torch.IntTensor([505] * batch_size)
         label_lens = target_len.type(torch.IntTensor)
         loss = criterion(acts, labels, act_lens, label_lens)
+        
+        # Normalizze the loss by the batch size to reduce the hight values of the loss
+		loss.data[0] = loss.data[0] / batch_size
+        
         losses.update(loss.data[0], input.size(0))
 
         # Compute and record the accuracy
