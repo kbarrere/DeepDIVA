@@ -119,13 +119,19 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         
         labels = target_var.view(-1)
         labels = labels.type(torch.IntTensor)
+        labels = labels[labels.nonzero()] # Remove padding
+        labels = labels.view(-1)
         
-        act_lens = torch.IntTensor([505] * batch_size)
+        
+        act_lens = torch.IntTensor([acts.size()[0]] * batch_size)
         label_lens = target_len.type(torch.IntTensor)
+        """
+        logging.info("Acts : " + str(acts))
+        logging.info("Label : " + str(labels))
+        logging.info("Label len : " + str(label_lens))
+        logging.info("--------------------------------------------------")
+        """
         loss = criterion(acts, labels, act_lens, label_lens)
-        
-        # Normalizze the loss by the batch size to reduce the hight values of the loss
-		loss.data[0] = loss.data[0] / batch_size
         
         losses.update(loss.data[0], input.size(0))
 

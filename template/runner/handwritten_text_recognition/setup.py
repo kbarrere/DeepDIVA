@@ -17,8 +17,8 @@ import torch.utils.data
 from warpctc_pytorch import CTCLoss
 
 # DeepDIVA
-from datasets.piff_line_dataset import load_dataset
-#from datasets.piff_word_dataset import load_dataset
+#from datasets.piff_line_dataset import load_dataset
+from datasets.piff_word_dataset import load_dataset
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 import models
@@ -67,7 +67,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
 
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
-
+    """
     transform = transforms.Compose([
         ResizeHeight(128),
         PadRight(2048),
@@ -79,15 +79,16 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
         PadRight(512),
         transforms.ToTensor()
     ])
-	"""
+    
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform
 
     
     target_transform = transforms.Compose([
-		EsposallesCharToCTCLabel(),
-		PadToFixedSize(98),
+        EsposallesCharToCTCLabel(),
+        #PadToFixedSize(98), #for line
+        PadToFixedSize(14), #for words
         CTCLabelToTensor()
     ])
 
@@ -179,9 +180,9 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
         except:
             logging.warning('Unable to load information for data balancing. Using normal criterion')
             criterion = nn.CrossEntropyLoss()
-	"""
-    criterion = CTCLoss()
-	
+    """
+    criterion = CTCLoss(size_average=True, length_average=True)
+    
     # Transfer model to GPU (if desired)
     if not no_cuda:
         logging.info('Transfer model to GPU')

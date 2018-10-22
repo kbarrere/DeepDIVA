@@ -147,16 +147,15 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
 
     acts = output.transpose(0, 1).contiguous()
 
-    labels = target_var.view(-1)
+    labels = target_var.view(-1) 
     labels = labels.type(torch.IntTensor)
+    labels = labels[labels.nonzero()] # Remove padding
+    labels = labels.view(-1)
 
-    act_lens = torch.IntTensor([505] * batch_size)
+    act_lens = torch.IntTensor([acts.size()[0]] * batch_size)
     label_lens = target_len.type(torch.IntTensor)
-
-    loss = criterion(acts, labels, act_lens, label_lens)
     
-    # Normalizze the loss by the batch size to reduce the hight values of the loss
-    loss.data[0] = loss.data[0] / batch_size
+    loss = criterion(acts, labels, act_lens, label_lens)
     
     loss_meter.update(loss.data[0], len(input_var))
 
@@ -168,8 +167,8 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     acc = 0
     
     # Gradient Clipping
-    if loss.data[0] > 1 or math.isnan(loss.data[0]):
-        loss.data[0] = 1
+    #if loss.data[0] > 1 / batch_size or math.isnan(loss.data[0]):
+    #    loss.data[0] = 1 / batch_size
         
     # Reset gradient
     optimizer.zero_grad()
