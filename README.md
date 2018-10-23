@@ -75,3 +75,11 @@ If everything work, you can start to work with this command (still in developmen
 ``` shell
 python template/RunMe.py --runner-class handwritten_text_recognition --output-folder log --piff-json <path/to/file.json> --lr 0.1 --ignoregit --disable-dataset-integrity --model-name crnn --batch-size 256 --epochs 20000
 ```
+You can add flags to specify a retraining, a pretraining, ... :
+
+``` shell
+--load-model <path/to/checkpoint.pth.tar>
+--resume <path/to/checkpoint.pth.tar>
+--star-epoch <N>
+```
+
