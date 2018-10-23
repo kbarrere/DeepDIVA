@@ -171,14 +171,8 @@ class LineImageNotInMemory(data.Dataset):
             img = Image.open(f)
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
-            """
-            width, height = img.size
-            target_height = 128
-            target_width = int(target_height * width / height)
-            # Copy the image to avoid bug when the file is closed later
-            img = img.copy()
-            img = img.resize([target_width, target_height], Image.ANTIALIAS)  # TODO remove
-            """
+        
+        image_width, image_height = img.size
 
         target = self.line_values[index]
         target_len = len(target)
@@ -188,7 +182,7 @@ class LineImageNotInMemory(data.Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, target, target_len
+        return img, target, target_len, image_height
 
     def __len__(self):
         return len(self.image_paths)
