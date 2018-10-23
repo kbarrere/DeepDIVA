@@ -52,7 +52,7 @@ class _CRNN(nn.Module):
 
     """
 
-    def __init__(self, output_channels=1000):
+    def __init__(self, output_channels=61):
         """
         Creates an AlexNet model from the scratch.
 
@@ -99,12 +99,12 @@ class _CRNN(nn.Module):
         )
 
         self.collapse = Collapse(height=11, width=1) #words
-        #self.collapse = Collapse(height=23, width=1)
+        #self.collapse = Collapse(height=23, width=1) #lines
         
         self.lstm = nn.LSTM(128, 128, num_layers=2, batch_first=True, dropout=0.5, bidirectional=True)
 
         self.fc1 = nn.Sequential(
-            nn.Linear(256, 61)
+            nn.Linear(256, output_channels)
         )
 
 

@@ -14,7 +14,7 @@ from util.evaluation.metrics import accuracy
 from util.misc import AverageMeter, _prettyprint_logging_label, save_image_and_log_to_tensorboard
 from util.visualization.confusion_matrix_heatmap import make_heatmap
 
-from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence
+from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
 
 def validate(val_loader, model, criterion, writer, epoch, no_cuda=False, log_interval=20, **kwargs):
@@ -59,8 +59,9 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
 
     # Instantiate the counters
     batch_time = AverageMeter()
+    wers = AverageMeter()
+    cers = AverageMeter()
     losses = AverageMeter()
-    top1 = AverageMeter()
     data_time = AverageMeter()
 
     # Switch to evaluate mode (turn off dropout & such )
@@ -107,26 +108,28 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         
         labels_len = target_len.type(torch.IntTensor)
         
+        probs = output.clone()
+        probs = probs.detach()
+        
+        # Computes CER and WER
+        predictions = sample_text(probs)
+        references = convert_batch_to_sequence(target_var)
+        cer = batch_cer(predictions, references)
+        wer = batch_wer(predictions, references)
+        
+        cers.update(cer, input.size(0))
+        wers.update(wer, input.size(0))
+        
         # Temp
         if batch_idx == 0:
-            probs = output.clone()
-            probs = probs.detach()
-            #logging.info("Output: " + str(probs))
-            #logging.info("Image width: " + str(image_width))
-            #logging.info("acts_len: " + str(acts_len))
-            logging.info("Predicted Sequence: " + str(sample_text(probs)))
-            #logging.info("Int: " + str(target_var))
-            logging.info("True labels: " + str(convert_batch_to_sequence(target_var)))
+            logging.info("Predicted Sequence: " + str(predictions))
+            logging.info("True labels: " + str(references))
+            logging.info("CER: " + str(cer))
+            logging.info("WER: " + str(wer))
         
         loss = criterion(acts, labels, acts_len, labels_len)
         
         losses.update(loss.data[0], input.size(0))
-
-        # Compute and record the accuracy
-        """
-        acc1 = accuracy(output.data, target, topk=(1,))[0]
-        top1.update(acc1[0], input.size(0))
-        """
 
         # Get the predictions
         _ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
@@ -135,16 +138,12 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar(logging_label + '/mb_loss', loss.data[0], epoch * len(data_loader) + batch_idx)
-            """
-            writer.add_scalar(logging_label + '/mb_accuracy', acc1.cpu().numpy(), epoch * len(data_loader) + batch_idx)
-            """
+            writer.add_scalar(logging_label + '/mb_cer', cer, epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_wer', wer, epoch * len(data_loader) + batch_idx)
         else:
-            writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0],
-                              epoch * len(data_loader) + batch_idx)
-            """
-            writer.add_scalar(logging_label + '/mb_accuracy_{}'.format(multi_run), acc1.cpu().numpy(),
-                              epoch * len(data_loader) + batch_idx)
-            """
+            writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0], epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_cer_{}'.format(multi_run), cer, epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_wer_{}'.format(multi_run), wer, epoch * len(data_loader) + batch_idx)
 
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -155,6 +154,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
                                  ' epoch [{0}][{1}/{2}]\t'.format(epoch, batch_idx, len(data_loader)))
 
             pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
+                             CER='{cer.avg:.4f}\t'.format(cer=cers),
+                             WER='{wer.avg:.4f}\t'.format(wer=wers),
                              Loss='{loss.avg:.4f}\t'.format(loss=losses),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
@@ -181,14 +182,16 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     """
     logging.info(_prettyprint_logging_label(logging_label) +
                  ' epoch[{}]: '
+                 'CER={cer.avg:.4f}\t'
+                 'WER={wer.avg:.4f}\t'
                  'Loss={loss.avg:.4f}\t'
                  'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
-                 .format(epoch, batch_time=batch_time, data_time=data_time, loss=losses, top1=top1))
+                 .format(epoch, batch_time=batch_time, data_time=data_time, cer=cers, wer=wers, loss=losses))
 
     # Generate a classification report for each epoch
     #_log_classification_report(data_loader, epoch, preds, targets, writer)
 
-    return top1.avg
+    return cers.avg
 
 
 def _log_classification_report(data_loader, epoch, preds, targets, writer):

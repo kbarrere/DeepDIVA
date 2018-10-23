@@ -11,6 +11,7 @@ from tqdm import tqdm
 from util.misc import AverageMeter
 from util.evaluation.metrics import accuracy
 
+from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
 def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=False, log_interval=25,
           **kwargs):
@@ -45,8 +46,9 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
     # Instantiate the counters
     batch_time = AverageMeter()
+    wer_meter = AverageMeter()
+    cer_meter = AverageMeter()
     loss_meter = AverageMeter()
-    acc_meter = AverageMeter()
     data_time = AverageMeter()
 
     # Switch to train mode (turn on dropout & stuff)
@@ -69,21 +71,17 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        acc, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, loss_meter, acc_meter)
+        cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter)
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar('train/mb_loss', loss.data[0], epoch * len(train_loader) + batch_idx)
-            """
-            writer.add_scalar('train/mb_accuracy', acc.cpu().numpy(), epoch * len(train_loader) + batch_idx)
-            """
+            writer.add_scalar('train/mb_cer', cer, epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_wer', wer, epoch * len(train_loader) + batch_idx)
         else:
-            writer.add_scalar('train/mb_loss_{}'.format(multi_run), loss.data[0],
-                              epoch * len(train_loader) + batch_idx)
-            """
-            writer.add_scalar('train/mb_accuracy_{}'.format(multi_run), acc.cpu().numpy(),
-                              epoch * len(train_loader) + batch_idx)
-            """
+            writer.add_scalar('train/mb_loss_{}'.format(multi_run), loss.data[0], epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_cer_{}'.format(multi_run), cer, epoch * len(train_loader) + batch_idx)
+            writer.add_scalar('train/mb_wer_{}'.format(multi_run), wer, epoch * len(train_loader) + batch_idx)
 
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -94,24 +92,28 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
             pbar.set_description('train epoch [{0}][{1}/{2}]\t'.format(epoch, batch_idx, len(train_loader)))
 
             pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
+                             CER='{cer.avg:.4f}\t'.format(cer=cer_meter),
+                             WER='{wer.avg:.4f}\t'.format(wer=wer_meter),
                              Loss='{loss.avg:.4f}\t'.format(loss=loss_meter),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
     # Logging the epoch-wise accuracy
     if multi_run is None:
-        writer.add_scalar('train/accuracy', acc_meter.avg, epoch)
+        writer.add_scalar('train/cer', cer_meter.avg, epoch)
+        writer.add_scalar('train/wer', wer_meter.avg, epoch)
     else:
-        writer.add_scalar('train/accuracy_{}'.format(multi_run), acc_meter.avg, epoch)
+        writer.add_scalar('train/cer_{}'.format(multi_run), cer_meter.avg, epoch)
+        writer.add_scalar('train/wer_{}'.format(multi_run), wer_meter.avg, epoch)
 
     logging.debug('Train epoch[{}]: '
                   'Loss={loss.avg:.4f}\t'
                   'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
-                  .format(epoch, batch_time=batch_time, data_time=data_time, loss=loss_meter, acc_meter=acc_meter))
+                  .format(epoch, batch_time=batch_time, data_time=data_time, loss=loss_meter))
 
-    return acc_meter.avg
+    return cer_meter.avg
 
 
-def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, loss_meter, acc_meter):
+def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter):
     """
     This routing train the model passed as parameter for one mini-batch
 
@@ -141,7 +143,10 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     """
     # Compute output
     output = model(input_var)
-
+    
+    probs = output.clone()
+    probs = probs.detach()
+    
     # Compute and record the loss
     batch_size = len(output)
 
@@ -158,16 +163,18 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     
     labels_len = target_len.type(torch.IntTensor)
     
+    # Computes CER and WER
+    predictions = sample_text(probs)
+    references = convert_batch_to_sequence(target_var)
+    cer = batch_cer(predictions, references)
+    wer = batch_wer(predictions, references)
+    
+    cer_meter.update(cer, input_var.size(0))
+    wer_meter.update(wer, input_var.size(0))
+    
     loss = criterion(acts, labels, acts_len, labels_len)
     
     loss_meter.update(loss.data[0], len(input_var))
-
-    # Compute and record the accuracy
-    """
-    acc = accuracy(output.data, target_var.data, topk=(1,))[0]
-    acc_meter.update(acc[0], len(input_var))
-    """
-    acc = 0
         
     # Reset gradient
     optimizer.zero_grad()
@@ -176,4 +183,4 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     # Perform a step by updating the weights
     optimizer.step()
 
-    return acc, loss
+    return cer, wer, loss

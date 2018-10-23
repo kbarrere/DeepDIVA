@@ -57,8 +57,9 @@ class HandwrittenTextRecognition:
 
         # Setting up the dataloaders
         train_loader, val_loader, test_loader = set_up_dataloaders(**kwargs)
-        num_classes = 64 # TODO : just temp !
-
+        
+        num_classes = 61
+        
         # Setting up model, optimizer, criterion
         model, criterion, optimizer, best_value, start_epoch = set_up_model(num_classes=num_classes,
                                                                             model_name=model_name,
@@ -81,7 +82,7 @@ class HandwrittenTextRecognition:
                 val_value[epoch] = HandwrittenTextRecognition._validate(val_loader, model, criterion, writer, epoch, **kwargs)
             if decay_lr is not None:
                 adjust_learning_rate(lr=lr, optimizer=optimizer, epoch=epoch, decay_lr_epochs=decay_lr)
-            best_value = checkpoint(epoch, val_value[epoch], best_value, model, optimizer, current_log_folder)
+            best_value = checkpoint(epoch, val_value[epoch], best_value, model, optimizer, current_log_folder, invert_best=True)
 
         # Test
         test_value = HandwrittenTextRecognition._test(test_loader, model, criterion, writer, epochs - 1, **kwargs)
