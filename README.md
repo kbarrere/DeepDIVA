@@ -80,6 +80,6 @@ You can add flags to specify a retraining, a pretraining, ... :
 ``` shell
 --load-model <path/to/checkpoint.pth.tar>
 --resume <path/to/checkpoint.pth.tar>
---star-epoch <N>
+--start-epoch <N>
 ```
 
