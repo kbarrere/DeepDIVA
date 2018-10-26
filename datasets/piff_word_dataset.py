@@ -255,6 +255,11 @@ class WordImageNotInMemory(data.Dataset):
             img = self.transform(img)
         if self.target_transform is not None:
             target = self.target_transform(target)
+        
+        # Compute new image size after the resize to a fixed height of 80
+        # It does not take into account the padding and help separate true
+        # pixel images from padding
+        image_width = int(80 / image_height * image_width)
 
         return img, target, target_len, image_width
 

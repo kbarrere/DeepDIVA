@@ -131,13 +131,9 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
         The target data (labels) for the mini-batch
     loss_meter : AverageMeter
         Tracker for the overall loss
-    acc_meter : AverageMeter
-        Tracker for the overall accuracy
 
     Returns
     -------
-    acc : float
-        Accuracy for this mini-batch
     loss : float
         Loss for this mini-batch
     """

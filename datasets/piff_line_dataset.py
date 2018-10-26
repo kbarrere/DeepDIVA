@@ -116,7 +116,14 @@ class LineImageNotInMemory(data.Dataset):
 
         logging.info("Loaded " + str(self.__len__()) + " lines for the " + self.split + " split.")
 
+        self.shuffle_ind = []
+        for i in range(self.__len__()):
+            self.shuffle_ind.append(i)
+            
         f.close()
+    
+    def shuffle(self):
+        np.random.shuffle(self.shuffle_ind)
 
     def line_split_search(self, dict, is_in_split=False):
         if is_in_split:
@@ -172,15 +179,20 @@ class LineImageNotInMemory(data.Dataset):
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
         
-        image_width, image_height = img.size
+        image_width, image_height = img.size # Size before transforms
 
-        target = self.line_values[index]
+        target = self.line_values[self.shuffle_ind[index]] # Get the target and apply the current shuffling
         target_len = len(target)
 
         if self.transform is not None:
             img = self.transform(img)
         if self.target_transform is not None:
             target = self.target_transform(target)
+        
+        # Compute new image size after the resize to a fixed height of 128
+        # It does not take into account the padding and help separate true
+        # pixel images from padding
+        image_width = int(128 / image_height * image_width)
 
         return img, target, target_len, image_height
 
