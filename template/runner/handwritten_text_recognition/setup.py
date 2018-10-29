@@ -17,8 +17,8 @@ import torch.utils.data
 from warpctc_pytorch import CTCLoss
 
 # DeepDIVA
-#from datasets.piff_line_dataset import load_dataset #line
-from datasets.piff_word_dataset import load_dataset #word
+from datasets.piff_line_dataset import load_dataset #line
+#from datasets.piff_word_dataset import load_dataset #word
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 import models
@@ -68,7 +68,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
     
-    """
+    
     # Lines
     transform = transforms.Compose([
         ResizeHeight(128),
@@ -82,7 +82,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
         PadRight(512),
         transforms.ToTensor()
     ])
-    
+    """
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform
@@ -90,8 +90,8 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     
     target_transform = transforms.Compose([
         EsposallesCharToCTCLabel(),
-        #PadToFixedSize(98), #for line
-        PadToFixedSize(14), #for words
+        PadToFixedSize(98), #for line
+        #PadToFixedSize(14), #for words
         CTCLabelToTensor()
     ])
 

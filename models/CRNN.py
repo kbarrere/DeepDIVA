@@ -98,8 +98,8 @@ class _CRNN(nn.Module):
             nn.BatchNorm2d(128)
         )
 
-        self.collapse = Collapse(height=11, width=1) #words
-        #self.collapse = Collapse(height=23, width=1) #lines
+        #self.collapse = Collapse(height=11, width=1) #words
+        self.collapse = Collapse(height=23, width=1) #lines
         
         self.lstm = nn.LSTM(128, 128, num_layers=2, batch_first=True, dropout=0.5, bidirectional=True)
 
