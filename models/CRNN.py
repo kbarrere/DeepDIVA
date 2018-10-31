@@ -94,7 +94,7 @@ class _CRNN(nn.Module):
         self.conv5 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=(4, 2), stride=1, padding=0),
             nn.LeakyReLU(),
-            #nn.Dropout2d(p=0.2),
+            nn.Dropout2d(p=0.2),
             nn.BatchNorm2d(128)
         )
 

@@ -72,7 +72,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     # Lines
     transform = transforms.Compose([
         ResizeHeight(128),
-        PadRight(2048),
+        PadRight(2176),
         transforms.ToTensor()
     ])
     """
@@ -83,6 +83,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
         transforms.ToTensor()
     ])
     """
+    
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform

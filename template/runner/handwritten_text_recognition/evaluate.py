@@ -112,7 +112,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         probs = probs.detach()
         
         # Computes CER and WER
-        predictions = sample_text(probs)
+        predictions = sample_text(probs, acts_len=acts_len)
         references = convert_batch_to_sequence(target_var)
         cer = batch_cer(predictions, references)
         wer = batch_wer(predictions, references)

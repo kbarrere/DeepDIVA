@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 esposalles_chars = [
     '<BLANK>', #0
@@ -64,7 +65,7 @@ esposalles_chars = [
     ' ' #60
 ]
 
-def sample_text(probs, blank_index=0, char_list=esposalles_chars):
+def sample_text(probs, acts_len=[], blank_index=0, char_list=esposalles_chars):
     """
     Generates the predicted sequence based on the characters probabilities.
     The rules to generates the text are the following :
@@ -91,14 +92,21 @@ def sample_text(probs, blank_index=0, char_list=esposalles_chars):
     """
     
     sequences = []
+    batch_size = len(probs)
+    max_seq_size = len(probs[0])
     character_number = len(probs[0][0])
     
-    for frames in probs:
+    for i in range(batch_size):
         
+        frames = probs[i]
         sequence_raw = []
+        act_len = max_seq_size
+        if len(acts_len) != 0:
+            act_len = acts_len[i]
         
         # Get the characters with the hightest values
-        for frame in frames:
+        for j in range(act_len):
+            frame = frames[j]
             predicted_char = np.argmax(frame)
             sequence_raw.append(predicted_char)
         

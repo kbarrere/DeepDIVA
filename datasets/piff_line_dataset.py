@@ -181,7 +181,7 @@ class LineImageNotInMemory(data.Dataset):
         
         image_width, image_height = img.size # Size before transforms
 
-        target = self.line_values[self.shuffle_ind[index]] # Get the target and apply the current shuffling
+        target = self.line_values[index] # Get the target and apply the current shuffling
         target_len = len(target)
 
         if self.transform is not None:

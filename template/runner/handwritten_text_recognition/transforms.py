@@ -37,6 +37,9 @@ class PadRight(object):
 def pad_right(img, target_width, fill_color=(0, 0, 0)):
     width, height = img.size
 
+    if width > target_width:
+        logging.warning("Cannot pad an image of width " + str(width) + " to " + str(target_width))
+
     new_img = Image.new('RGB', (target_width, height), fill_color)
     new_img.paste(img, (0, 0))
 

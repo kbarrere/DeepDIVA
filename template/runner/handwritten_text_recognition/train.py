@@ -140,9 +140,6 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     # Compute output
     output = model(input_var)
     
-    probs = output.clone()
-    probs = probs.detach()
-    
     # Compute and record the loss
     batch_size = len(output)
 
@@ -159,9 +156,13 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     
     labels_len = target_len.type(torch.IntTensor)
     
+    probs = output.clone()
+    probs = probs.detach()
+    
     # Computes CER and WER
-    predictions = sample_text(probs)
+    predictions = sample_text(probs, acts_len=acts_len)
     references = convert_batch_to_sequence(target_var)
+    
     cer = batch_cer(predictions, references)
     wer = batch_wer(predictions, references)
     
@@ -176,14 +177,6 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     optimizer.zero_grad()
     # Compute gradients
     loss.backward()
-    
-    if loss.data[0] < 0.00001:
-        logging.info("AU SECOURS !!!!!")
-        logging.info("acts: " + str(acts))
-        logging.info("labels: " + str(labels))
-        logging.info("acts_len: " + str(acts_len))
-        logging.info("labels_len: " + str(labels_len))
-        logging.info("-------------------------------------------------")
     
     #for name, p in model.named_parameters():
     #    logging.info("Param " + name + " ; Data: " + str(torch.norm(p.data)) + " ; Grad: " + str(torch.norm(p.grad)))
