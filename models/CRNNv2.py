@@ -31,7 +31,7 @@ class Collapse(nn.Module):
         return x
 
 
-class _CRNN(nn.Module):
+class _CRNNv2(nn.Module):
     r"""
 
     Attributes
@@ -61,7 +61,7 @@ class _CRNN(nn.Module):
         output_channels : int
             Number of neurons in the last layer
         """
-        super(_CRNN, self).__init__()
+        super(_CRNNv2, self).__init__()
 
         self.expected_input_size = (64, 64)
 
@@ -81,25 +81,25 @@ class _CRNN(nn.Module):
         self.conv3 = nn.Sequential(
             nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=0),
             nn.LeakyReLU(),
-            nn.Dropout2d(p=0.2),
+            nn.MaxPool2d(kernel_size=2, stride=2),
             nn.BatchNorm2d(32)
         )
         self.conv4 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),
             nn.LeakyReLU(),
             nn.Dropout2d(p=0.2),
+            #nn.MaxPool2d(kernel_size=2, stride=2),
             nn.BatchNorm2d(64)
         )
 
         self.conv5 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=(4, 2), stride=1, padding=0),
             nn.LeakyReLU(),
-            #nn.Dropout2d(p=0.2),
+            nn.Dropout2d(p=0.2),
             nn.BatchNorm2d(128)
         )
 
-        #self.collapse = Collapse(height=11, width=1) #words
-        self.collapse = Collapse(height=23, width=1) #lines
+        self.collapse = Collapse(height=9, width=1) #lines
         
         self.lstm = nn.LSTM(128, 128, num_layers=2, batch_first=True, dropout=0.5, bidirectional=True)
 
@@ -141,14 +141,14 @@ class _CRNN(nn.Module):
         return x
 
 
-def crnn(pretrained=False,**kwargs):
+def crnnv2(pretrained=False,**kwargs):
     """
     Returns a CRNN model.
 
     Parameters
     ----------
     """
-    model = _CRNN(**kwargs)
+    model = _CRNNv2(**kwargs)
 
     if pretrained:
         logging.info('No pretraining available for this model. Training a network form scratch')

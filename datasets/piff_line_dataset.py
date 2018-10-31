@@ -194,7 +194,7 @@ class LineImageNotInMemory(data.Dataset):
         # pixel images from padding
         image_width = int(128 / image_height * image_width)
 
-        return img, target, target_len, image_height
+        return img, target, target_len, image_width
 
     def __len__(self):
         return len(self.image_paths)

@@ -73,13 +73,6 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
         cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter)
         
-        # Temp
-        
-        references = convert_batch_to_sequence(target_var)
-        
-        if batch_idx == 0:
-            logging.info("Training True labels: " + str(references))
-        
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
             writer.add_scalar('train/mb_loss', loss.data[0], epoch * len(train_loader) + batch_idx)
@@ -183,6 +176,23 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     optimizer.zero_grad()
     # Compute gradients
     loss.backward()
+    
+    if loss.data[0] < 0.00001:
+        logging.info("AU SECOURS !!!!!")
+        logging.info("acts: " + str(acts))
+        logging.info("labels: " + str(labels))
+        logging.info("acts_len: " + str(acts_len))
+        logging.info("labels_len: " + str(labels_len))
+        logging.info("-------------------------------------------------")
+    
+    #for name, p in model.named_parameters():
+    #    logging.info("Param " + name + " ; Data: " + str(torch.norm(p.data)) + " ; Grad: " + str(torch.norm(p.grad)))
+    # Add gradient cliping ?
+    """
+    clip = 0.1
+    torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+    """
+    
     # Perform a step by updating the weights
     optimizer.step()
 
