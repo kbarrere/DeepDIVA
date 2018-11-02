@@ -1,18 +1,15 @@
 # Utils
 import logging
 import time
-import warnings
 
 import numpy as np
+
 # Torch related stuff
 import torch
-from sklearn.metrics import confusion_matrix, classification_report
 from tqdm import tqdm
 
-from util.evaluation.metrics import accuracy
 # DeepDIVA
-from util.misc import AverageMeter, _prettyprint_logging_label, save_image_and_log_to_tensorboard
-from util.visualization.confusion_matrix_heatmap import make_heatmap
+from util.misc import AverageMeter, _prettyprint_logging_label
 
 from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
@@ -52,8 +49,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
 
     Returns
     -------
-    top1.avg : float
-        Accuracy of the model of the evaluated split
+    cers.avg : float
+        Character Error Rate of the model of the evaluated split
     """
     multi_run = kwargs['run'] if 'run' in kwargs else None
 
@@ -104,6 +101,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         
         # Only use activation before zero padding
         image_width = image_width.type(torch.IntTensor)
+        
+        # TODO: use models attributes ?
         acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
         
         labels_len = target_len.type(torch.IntTensor)
@@ -135,7 +134,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         _ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
         _ = [targets.append(item) for item in target.cpu().numpy()]
 
-        # Add loss and accuracy to Tensorboard
+        # Add loss, CER and WER to Tensorboard
         if multi_run is None:
             writer.add_scalar(logging_label + '/mb_loss', loss.data[0], epoch * len(data_loader) + batch_idx)
             writer.add_scalar(logging_label + '/mb_cer', cer, epoch * len(data_loader) + batch_idx)
@@ -167,44 +166,4 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
                  'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
                  .format(epoch, batch_time=batch_time, data_time=data_time, cer=cers, wer=wers, loss=losses))
 
-    # Generate a classification report for each epoch
-    #_log_classification_report(data_loader, epoch, preds, targets, writer)
-
     return cers.avg
-
-
-def _log_classification_report(data_loader, epoch, preds, targets, writer):
-    """
-    This routine computes and prints on Tensorboard TEXT a classification
-    report with F1 score, Precision, Recall and similar metrics computed
-    per-class.
-
-    Parameters
-    ----------
-    data_loader : torch.utils.data.DataLoader
-        The dataloader of the evaluation set
-    epoch : int
-        Number of the epoch (for logging purposes)
-    preds : list
-        List of all predictions of the model for this epoch
-    targets : list
-        List of all correct labels for this epoch
-    writer : tensorboardX.writer.SummaryWriter
-        The tensorboard writer object. Used to log values on file for the tensorboard visualization.
-
-    Returns
-    -------
-        None
-    """
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        classification_report_string = str(classification_report(y_true=targets,
-                                                                 y_pred=preds,
-                                                                 target_names=[str(item) for item in
-                                                                               data_loader.dataset.classes]))
-    # Fix for TB writer. Its an ugly workaround to have it printed nicely in the TEXT section of TB.
-    classification_report_string = classification_report_string.replace('\n ', '\n\n       ')
-    classification_report_string = classification_report_string.replace('precision', '      precision', 1)
-    classification_report_string = classification_report_string.replace('avg', '      avg', 1)
-
-    writer.add_text('Classification Report for epoch {}\n'.format(epoch), '\n' + classification_report_string, epoch)

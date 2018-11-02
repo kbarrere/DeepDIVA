@@ -44,6 +44,9 @@ class HandwrittenTextRecognition:
             Decay the lr flag
         validation_interval: int
             Run evaluation on validation set every N epochs
+        dictionnary_name : string
+            Name of the dictionnary used.
+            Determine the number of characters in the dataset.
 
         Returns
         -------

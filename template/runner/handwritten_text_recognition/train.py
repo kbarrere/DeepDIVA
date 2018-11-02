@@ -1,7 +1,6 @@
 # Utils
 import logging
 import time
-import math
 
 # Torch related stuff
 import torch
@@ -9,7 +8,6 @@ from tqdm import tqdm
 
 # DeepDIVA
 from util.misc import AverageMeter
-from util.evaluation.metrics import accuracy
 
 from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
@@ -39,8 +37,8 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
     Returns
     ----------
-    top1.avg : float
-        Accuracy of the model of the evaluated split
+    cer_meter.avg : float
+        Character Error Rate of the model of the evaluated split
     """
     multi_run = kwargs['run'] if 'run' in kwargs else None
 
@@ -73,7 +71,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
         cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter)
         
-        # Add loss and accuracy to Tensorboard
+        # Add loss, CER and WER to Tensorboard
         if multi_run is None:
             writer.add_scalar('train/mb_loss', loss.data[0], epoch * len(train_loader) + batch_idx)
             writer.add_scalar('train/mb_cer', cer, epoch * len(train_loader) + batch_idx)
@@ -97,7 +95,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
                              Loss='{loss.avg:.4f}\t'.format(loss=loss_meter),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
-    # Logging the epoch-wise accuracy
+    # Logging the epoch-wise CER and WER
     if multi_run is None:
         writer.add_scalar('train/cer', cer_meter.avg, epoch)
         writer.add_scalar('train/wer', wer_meter.avg, epoch)
@@ -129,6 +127,14 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
         The input data for the mini-batch
     target_var : torch.autograd.Variable
         The target data (labels) for the mini-batch
+    target_len : int tensor
+        len of each predictions
+    image_width : int tensor
+        width of the input images after applying transforms, but without padding
+    cer_meter : AverageMeter
+        Tracker for the overall CER
+    wer_meter : AverageMeter
+        Tracker for the overall WER
     loss_meter : AverageMeter
         Tracker for the overall loss
 
@@ -152,6 +158,8 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     
     # Only use activation before zero padding
     image_width = image_width.type(torch.IntTensor)
+    
+    # TODO: use models attributes ?
     acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
     
     labels_len = target_len.type(torch.IntTensor)
@@ -177,14 +185,6 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     optimizer.zero_grad()
     # Compute gradients
     loss.backward()
-    
-    #for name, p in model.named_parameters():
-    #    logging.info("Param " + name + " ; Data: " + str(torch.norm(p.data)) + " ; Grad: " + str(torch.norm(p.grad)))
-    # Add gradient cliping ?
-    """
-    clip = 0.1
-    torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
-    """
     
     # Perform a step by updating the weights
     optimizer.step()

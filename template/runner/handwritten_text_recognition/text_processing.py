@@ -1,6 +1,8 @@
 import numpy as np
 import logging
 
+# Revert dictionnaries
+
 esposalles_chars = [
     '<BLANK>', #0
     '#', #1
@@ -20,7 +22,7 @@ esposalles_chars = [
     'B', #15
     'c', #16
     'C', #17
-    '<cedille>', #18
+    '<cedilla>', #18
     'd', #19
     'D', #20
     'e', #21

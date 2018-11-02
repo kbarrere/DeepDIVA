@@ -133,13 +133,13 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
         on demand. This is slower than storing everything in memory.
     workers : int
         Number of workers to use for the dataloaders
-    num_characters : int
-        Number of characters that are predicted by the model.
-        Could be used for instance if the number of characters is given by the dataloader.
     resize_height : int
         The height to which the dataset is resized.
     pad_width : int
         The whidth to which the dataset is padded.
+    num_characters : int
+        Number of characters that are predicted by the model.
+        Could be used for instance if the number of characters is given by the dataloader.
     
 
     Returns
