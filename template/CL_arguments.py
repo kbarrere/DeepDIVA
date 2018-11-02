@@ -28,6 +28,7 @@ def parse_arguments(args=None):
     _optimizer_options(parser)
     _system_options(parser)
     _triplet_options(parser)
+    _htr_options(parser)
 
     ###############################################################################
     # Parse argument
@@ -107,9 +108,6 @@ def _data_options(parser):
     parser_data = parser.add_argument_group('DATA', 'Dataset Options')
     parser_data.add_argument('--dataset-folder',
                              help='location of the dataset on the machine e.g root/data',
-                             required=False)
-    parser_data.add_argument('--piff-json',
-                             help='File representing a dataset following the PiFF format',
                              required=False)
     parser_data.add_argument('--inmem',
                              default=False,
@@ -284,3 +282,18 @@ def _triplet_options(parser):
                                 type=int,
                                 default=5, metavar='N',
                                 help='re-generate triplets every N epochs')
+
+def _htr_options(parser):
+    """
+    Handwritten Text Recognition options
+
+    These parameters are used by the runner class template.runner.handwritten_text_recognition
+    """
+    parser_htr = parser.add_argument_group('HTR', 'Handwritten Text Recognition Options')
+    parser_htr.add_argument('--piff-json',
+                                help='File representing a dataset following the PiFF format')
+    parser_htr.add_argument('--text-type',
+                                type=str,
+                                default='line',
+                                choices=['line', 'word'],
+                                help='The the type of text/images to load.')

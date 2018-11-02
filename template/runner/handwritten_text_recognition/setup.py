@@ -17,8 +17,7 @@ import torch.utils.data
 from warpctc_pytorch import CTCLoss
 
 # DeepDIVA
-from datasets.piff_line_dataset import load_dataset #line
-#from datasets.piff_word_dataset import load_dataset #word
+from datasets.htr_piff_dataset import load_dataset
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 import models
@@ -27,7 +26,7 @@ from template.setup import _get_optimizer
 from template.runner.handwritten_text_recognition.transforms import ResizeHeight, PadRight
 from template.runner.handwritten_text_recognition.text_string_transforms import EsposallesCharToCTCLabel, PadToFixedSize, CTCLabelToTensor
 
-def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
+def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, **kwargs):
     """
     Set up the dataloaders for the specified datasets.
 
@@ -61,6 +60,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     ###############################################################################################
     # Load the dataset splits as images
     train_ds, val_ds, test_ds = load_dataset(piff_json_file=piff_json,
+                                             text_type=text_type,
                                              in_memory=inmem,
                                              workers=workers)
 
@@ -87,7 +87,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform
-	
+    
     
     target_transform = transforms.Compose([
         EsposallesCharToCTCLabel(),
