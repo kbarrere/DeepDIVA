@@ -53,12 +53,28 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
 
     # Switch to train mode (turn on dropout & stuff)
     model.train()
-
+    
+    # Size in batch of a big batch
+    batch2_size = 64
+    
+    start = time.time()
+    
     # Iterate over whole training set
     end = time.time()
     pbar = tqdm(enumerate(train_loader), total=len(train_loader), unit='batch', ncols=150, leave=False)
+    
+    total_loss = torch.autograd.Variable(torch.zeros(1), requires_grad=True)
+    total_cer = 0
+    total_wer = 0
+    
     for batch_idx, (input, target, target_len, image_width) in pbar:
 
+        if batch_idx % batch2_size == 0:
+            # Reset the total loss
+            total_loss = torch.autograd.Variable(torch.zeros(1), requires_grad=True)
+            total_cer = 0
+            total_wer = 0
+        
         # Measure data loading time
         data_time.update(time.time() - end)
 
@@ -70,22 +86,74 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         # Convert the input and its labels to Torch Variables
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
-
-        cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter)
         
-        # Add loss and accuracy to Tensorboard
-        if multi_run is None:
-            writer.add_scalar('train/mb_loss', loss.data[0], epoch * len(train_loader) + batch_idx)
-            writer.add_scalar('train/mb_cer', cer, epoch * len(train_loader) + batch_idx)
-            writer.add_scalar('train/mb_wer', wer, epoch * len(train_loader) + batch_idx)
-        else:
-            writer.add_scalar('train/mb_loss_{}'.format(multi_run), loss.data[0], epoch * len(train_loader) + batch_idx)
-            writer.add_scalar('train/mb_cer_{}'.format(multi_run), cer, epoch * len(train_loader) + batch_idx)
-            writer.add_scalar('train/mb_wer_{}'.format(multi_run), wer, epoch * len(train_loader) + batch_idx)
+        # Compute output
+        output = model(input_var)
+        
+        probs = output.clone()
+        probs = probs.detach()
+        
+        # Compute and record the loss
+        batch_size = len(output)
 
-        # Measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+        acts = output.transpose(0, 1).contiguous()
+
+        labels = target_var.view(-1) 
+        labels = labels.type(torch.IntTensor)
+        labels = labels[labels.nonzero()] # Remove padding
+        labels = labels.view(-1)
+        
+        # Only use activation before zero padding
+        image_width = image_width.type(torch.IntTensor)
+        acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
+        
+        labels_len = target_len.type(torch.IntTensor)
+        
+        # Computes CER and WER
+        predictions = sample_text(probs)
+        references = convert_batch_to_sequence(target_var)
+        
+        
+        cer = batch_cer(predictions, references)
+        wer = batch_wer(predictions, references)
+        
+        cer_meter.update(cer, input_var.size(0))
+        wer_meter.update(wer, input_var.size(0))
+        
+        loss = criterion(acts, labels, acts_len, labels_len)
+        
+        # Stock the loss, cer and wer
+        total_loss = total_loss + loss
+        total_cer = total_cer + cer
+        total_wer = total_wer + wer
+        
+        if (batch_idx+1) % batch2_size == 0 or ((batch_idx == len(pbar)-1) and (len(pbar)-1) % batch2_size != 0):
+            # Average loss, cer and wer
+            total_loss = total_loss / batch2_size
+            total_cer = total_cer / batch2_size
+            total_wer = total_wer / batch2_size
+        
+            loss_meter.update(total_loss.data[0], len(input_var))
+            # Reset gradient
+            optimizer.zero_grad()
+            # Compute gradients
+            total_loss.backward()
+            # Perform a step by updating the weights
+            optimizer.step()
+
+            # Add loss and accuracy to Tensorboard
+            if multi_run is None:
+                writer.add_scalar('train/mb_loss', total_loss.data[0], epoch * len(train_loader) + batch_idx)
+                writer.add_scalar('train/mb_cer', total_cer, epoch * len(train_loader) + batch_idx)
+                writer.add_scalar('train/mb_wer', total_wer, epoch * len(train_loader) + batch_idx)
+            else:
+                writer.add_scalar('train/mb_loss_{}'.format(multi_run), total_loss.data[0], epoch * len(train_loader) + batch_idx)
+                writer.add_scalar('train/mb_cer_{}'.format(multi_run), total_cer, epoch * len(train_loader) + batch_idx)
+                writer.add_scalar('train/mb_wer_{}'.format(multi_run), total_wer, epoch * len(train_loader) + batch_idx)
+
+            # Measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
         # Log to console
         if batch_idx % log_interval == 0:
@@ -109,6 +177,8 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
                   'Loss={loss.avg:.4f}\t'
                   'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
                   .format(epoch, batch_time=batch_time, data_time=data_time, loss=loss_meter))
+
+    logging.info("Total Time : " + str(time.time() - start))
 
     return cer_meter.avg
 
@@ -140,6 +210,9 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     # Compute output
     output = model(input_var)
     
+    probs = output.clone()
+    probs = probs.detach()
+    
     # Compute and record the loss
     batch_size = len(output)
 
@@ -156,13 +229,9 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     
     labels_len = target_len.type(torch.IntTensor)
     
-    probs = output.clone()
-    probs = probs.detach()
-    
     # Computes CER and WER
-    predictions = sample_text(probs, acts_len=acts_len)
+    predictions = sample_text(probs)
     references = convert_batch_to_sequence(target_var)
-    
     cer = batch_cer(predictions, references)
     wer = batch_wer(predictions, references)
     
@@ -177,15 +246,6 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     optimizer.zero_grad()
     # Compute gradients
     loss.backward()
-    
-    #for name, p in model.named_parameters():
-    #    logging.info("Param " + name + " ; Data: " + str(torch.norm(p.data)) + " ; Grad: " + str(torch.norm(p.grad)))
-    # Add gradient cliping ?
-    """
-    clip = 0.1
-    torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
-    """
-    
     # Perform a step by updating the weights
     optimizer.step()
 

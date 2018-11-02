@@ -13,15 +13,19 @@ import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 
+#CTC Loss
+from warpctc_pytorch import CTCLoss
+
 # DeepDIVA
-#from datasets.piff_line_dataset import load_dataset
-from datasets.piff_word_dataset import load_dataset
+from datasets.piff_line_dataset import load_dataset #line
+#from datasets.piff_word_dataset import load_dataset #word
 from template.setup import _dataloaders_from_datasets, _load_mean_std_from_file
 
 import models
 from template.setup import _get_optimizer
 
 from template.runner.handwritten_text_recognition.transforms import ResizeHeight, PadRight
+from template.runner.handwritten_text_recognition.text_string_transforms import EsposallesCharToCTCLabel, PadToFixedSize, CTCLabelToTensor
 
 def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
     """
@@ -63,34 +67,39 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, **kwargs):
 
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
-
-    """
+    
+    
+    # Lines
     transform = transforms.Compose([
         ResizeHeight(128),
-        PadRight(2048),
+        PadRight(2176),
         transforms.ToTensor()
     ])
     """
-
+    # Words
     transform = transforms.Compose([
         ResizeHeight(80),
         PadRight(512),
         transforms.ToTensor()
     ])
-
+    """
+    
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform
-
-    """
+	
+    
     target_transform = transforms.Compose([
-        transforms.ToTensor()
+        EsposallesCharToCTCLabel(),
+        PadToFixedSize(98), #for line
+        #PadToFixedSize(14), #for words
+        CTCLabelToTensor()
     ])
 
     train_ds.target_transform = target_transform
     val_ds.target_transform = target_transform
     test_ds.target_transform = target_transform
-    """
+    
 
     train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size=batch_size,
                                                                        train_ds=train_ds,
@@ -163,6 +172,8 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     optimizer = _get_optimizer(optimizer_name, model, **kwargs)
 
     # Get the criterion
+    
+    """
     if disable_databalancing:
         criterion = nn.CrossEntropyLoss()
     else:
@@ -173,7 +184,9 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
         except:
             logging.warning('Unable to load information for data balancing. Using normal criterion')
             criterion = nn.CrossEntropyLoss()
-
+    """
+    criterion = CTCLoss(size_average=True, length_average=True)
+    
     # Transfer model to GPU (if desired)
     if not no_cuda:
         logging.info('Transfer model to GPU')
@@ -210,6 +223,6 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
             logging.error("No checkpoint found at '{}'".format(resume))
             sys.exit(-1)
     else:
-        best_value = 0.0
+        best_value = 100.0
 
     return model, criterion, optimizer, best_value, start_epoch

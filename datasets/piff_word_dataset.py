@@ -45,7 +45,7 @@ def load_dataset(piff_json_file, in_memory=False, workers=1):
     if in_memory:
         # Store all images and transcription directly in the memory
 
-        logging.error("Loading a PiFF json file and storing images in memeory not implemented !")
+        logging.error("Loading a PiFF json file and storing images in memory not implemented !")
         sys.exit(-1)
 
         train_ds = WordImageInMemory(piff_json_file, "training")
@@ -113,12 +113,6 @@ class WordImageNotInMemory(data.Dataset):
             logging.error("Error while loading PiFF Json file !")
             logging.error("Found " + str(len_images_path) + "image path but " + str(len_word_values) + "word transciptions.")
             sys.exit(-1)
-
-        self.dic = self.esposalles_dict()
-
-        # TODO remove, temp classification task to test
-        self.labels = [self.get_label(item) for item in self.word_values]
-        self.classes = np.unique(self.labels)
 
         logging.info("Loaded " + str(self.__len__()) + " words for the " + self.split + " split.")
 
@@ -251,16 +245,24 @@ class WordImageNotInMemory(data.Dataset):
             img = Image.open(f)
             # Copy the image to avoid bug when the file is closed later
             img = img.copy()
-
-        # TODO Remove
-        target = self.get_label(self.word_values[index])
+        
+        image_width, image_height = img.size
+        
+        target = self.word_values[index]
+        target_len = len(target)
 
         if self.transform is not None:
             img = self.transform(img)
         if self.target_transform is not None:
             target = self.target_transform(target)
+        
+        # Compute new image size after the resize to a fixed height of 80
+        # It does not take into account the padding and help separate true
+        # pixel images from padding
+        image_width = int(80 / image_height * image_width)
 
-        return img, target
+        return img, target, target_len, image_width
+
 
     def __len__(self):
         return len(self.image_paths)
