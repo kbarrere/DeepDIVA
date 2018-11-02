@@ -24,9 +24,9 @@ import models
 from template.setup import _get_optimizer
 
 from template.runner.handwritten_text_recognition.transforms import ResizeHeight, PadRight
-from template.runner.handwritten_text_recognition.text_string_transforms import EsposallesCharToCTCLabel, PadToFixedSize, CTCLabelToTensor
+from template.runner.handwritten_text_recognition.text_string_transforms import CharToCTCLabel, PadTextToFixedSize, CTCLabelToTensor
 
-def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, **kwargs):
+def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, resize_height, pad_width, pad_text, dictionnary_name, **kwargs):
     """
     Set up the dataloaders for the specified datasets.
 
@@ -61,6 +61,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, **kwarg
     # Load the dataset splits as images
     train_ds, val_ds, test_ds = load_dataset(piff_json_file=piff_json,
                                              text_type=text_type,
+                                             resize_height=resize_height,
                                              in_memory=inmem,
                                              workers=workers)
 
@@ -68,38 +69,31 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, **kwarg
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
     
-    
-    # Lines
-    transform = transforms.Compose([
-        ResizeHeight(128),
-        PadRight(2176),
-        transforms.ToTensor()
-    ])
-    """
-    # Words
-    transform = transforms.Compose([
-        ResizeHeight(80),
-        PadRight(512),
-        transforms.ToTensor()
-    ])
-    """
+    # Dataset's Transform
+    transform_composition = []
+    if resize_height:
+        transform_composition.append(ResizeHeight(resize_height))
+    if pad_width:
+        transform_composition.append(PadRight(pad_width))
+    transform_composition.append(transforms.ToTensor())
+    transform = transforms.Compose(transform_composition)
     
     train_ds.transform = transform
     val_ds.transform = transform
     test_ds.transform = transform
     
+    # Transcription's Transform
+    target_transform_composition = []
+    target_transform_composition.append(CharToCTCLabel(dictionnary_name))
+    if pad_text:
+        target_transform_composition.append(PadTextToFixedSize(pad_text))
+    target_transform_composition.append(CTCLabelToTensor())
     
-    target_transform = transforms.Compose([
-        EsposallesCharToCTCLabel(),
-        PadToFixedSize(98), #for line
-        #PadToFixedSize(14), #for words
-        CTCLabelToTensor()
-    ])
+    target_transform = transforms.Compose(target_transform_composition)
 
     train_ds.target_transform = target_transform
     val_ds.target_transform = target_transform
     test_ds.target_transform = target_transform
-    
 
     train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size=batch_size,
                                                                        train_ds=train_ds,
@@ -111,7 +105,7 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, **kwarg
 
 
 def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cuda, resume, load_model,
-                 start_epoch, disable_databalancing, dataset_folder, inmem, workers, num_classes=None,
+                 start_epoch, inmem, workers, resize_height, pad_width, num_characters=None,
                  **kwargs):
     """
     Instantiate model, optimizer, criterion. Load a pretrained model or resume from a checkpoint.
@@ -119,7 +113,7 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     Parameters
     ----------
     output_channels : int
-        Specify shape of final layer of network. Only used if num_classes is not specified.
+        Specify shape of final layer of network. Only used if number_characters is not specified.
     model_name : string
         Name of the model
     pretrained : bool
@@ -134,17 +128,19 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
         Path to a saved model
     start_epoch : int
         Epoch from which to resume training. If if not resuming a previous experiment the value is 0
-    disable_databalancing : boolean
-        If True the criterion will not be fed with the class frequencies. Use with care.
-    dataset_folder : String
-        Location of the dataset on the file system
     inmem : boolean
         Load the whole dataset in memory. If False, only file names are stored and images are loaded
         on demand. This is slower than storing everything in memory.
     workers : int
         Number of workers to use for the dataloaders
-    num_classes: int
-        Number of classes for the model
+    num_characters : int
+        Number of characters that are predicted by the model.
+        Could be used for instance if the number of characters is given by the dataloader.
+    resize_height : int
+        The height to which the dataset is resized.
+    pad_width : int
+        The whidth to which the dataset is padded.
+    
 
     Returns
     -------
@@ -165,26 +161,18 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     # Initialize the model
     logging.info('Setting up model {}'.format(model_name))
 
-    output_channels = output_channels if num_classes == None else num_classes
-    model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained)
-
+    output_channels = output_channels if num_characters == None else num_characters
+    
+    if resize_height and pad_width:
+        expected_input_size = (resize_height, pad_width)
+    
+        model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained, expected_input_size=expected_input_size)
+    else:
+        model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained)
     # Get the optimizer created with the specified parameters in kwargs (such as lr, momentum, ... )
     optimizer = _get_optimizer(optimizer_name, model, **kwargs)
 
     # Get the criterion
-    
-    """
-    if disable_databalancing:
-        criterion = nn.CrossEntropyLoss()
-    else:
-        try:
-            weights = _load_class_frequencies_weights_from_file(dataset_folder, inmem, workers)
-            criterion = nn.CrossEntropyLoss(weight=torch.from_numpy(weights).type(torch.FloatTensor))
-            logging.info('Loading weights for data balancing')
-        except:
-            logging.warning('Unable to load information for data balancing. Using normal criterion')
-            criterion = nn.CrossEntropyLoss()
-    """
     criterion = CTCLoss(size_average=True, length_average=True)
     
     # Transfer model to GPU (if desired)

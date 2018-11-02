@@ -13,7 +13,7 @@ import torch.utils.data as data
 from PIL import Image
 
 
-def load_dataset(piff_json_file, text_type, in_memory=False, workers=1):
+def load_dataset(piff_json_file, text_type, resize_height, in_memory=False, workers=1):
     """
     Read the content of a json file following the Pivot File Format (PiFF) :
     https://gitlab.univ-nantes.fr/mouchere-h/PiFFgroup
@@ -48,17 +48,17 @@ def load_dataset(piff_json_file, text_type, in_memory=False, workers=1):
         logging.error("Loading a PiFF json file and storing images in memory is not implemented yet, sorry!")
         sys.exit(-1)
 
-        train_ds = PiFFImageInMemory(piff_json_file, text_type, "training")
-        val_ds = PiFFImageInMemory(piff_json_file, text_type, "validation")
-        test_ds = PiFFImageInMemory(piff_json_file, text_type, "test")
+        train_ds = PiFFImageInMemory(piff_json_file, text_type, resize_height, "training")
+        val_ds = PiFFImageInMemory(piff_json_file, text_type, resize_height, "validation")
+        test_ds = PiFFImageInMemory(piff_json_file, text_type, resize_height, "test")
 
         return train_ds, val_ds, test_ds
 
     else:
         # Store the path to the images in memory and the transcriptions
-        train_ds = PiFFImageNotInMemory(piff_json_file, text_type, "training")
-        val_ds = PiFFImageNotInMemory(piff_json_file, text_type, "validation")
-        test_ds = PiFFImageNotInMemory(piff_json_file, text_type, "test")
+        train_ds = PiFFImageNotInMemory(piff_json_file, text_type, resize_height, "training")
+        val_ds = PiFFImageNotInMemory(piff_json_file, text_type, resize_height, "validation")
+        test_ds = PiFFImageNotInMemory(piff_json_file, text_type, resize_height, "test")
 
         return train_ds, val_ds, test_ds
 
@@ -68,7 +68,7 @@ class PiFFImageNotInMemory(data.Dataset):
     TODO
     """
 
-    def __init__(self, piff_json_file, text_type, split, transform=None, target_transform=None, workers=1):
+    def __init__(self, piff_json_file, text_type, resize_height, split, transform=None, target_transform=None, workers=1):
         """
         Load the data in memory and prepares it as a dataset.
 
@@ -100,6 +100,7 @@ class PiFFImageNotInMemory(data.Dataset):
         self.split = split
         self.transform = transform
         self.target_transform = target_transform
+        self.resize_height = resize_height
 
         self.piff_json_folder = self.piff_json_file[:-len(self.piff_json_file.split('/')[-1])]
         self.image_paths = []
@@ -196,7 +197,8 @@ class PiFFImageNotInMemory(data.Dataset):
         # Compute new image size after the resize to a fixed height
         # It does not take into account the padding and help separate true
         # pixel images from padding
-        image_width = int(128 / image_height * image_width)
+        if self.resize_height:
+            image_width = int(self.resize_height / image_height * image_width)
 
         return img, target, target_len, image_width
 

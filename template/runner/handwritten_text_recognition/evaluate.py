@@ -159,27 +159,6 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
                              Loss='{loss.avg:.4f}\t'.format(loss=losses),
                              Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
-    """ temporarily disabled confusion matrix, because of compatibility problem with PyTorch 0.4
-    # Make a confusion matrix
-    try:
-        cm = confusion_matrix(y_true=targets, y_pred=preds)
-        confusion_matrix_heatmap = make_heatmap(cm, data_loader.dataset.classes)
-    except ValueError:
-        logging.warning('Confusion Matrix did not work as expected')
-
-        confusion_matrix_heatmap = np.zeros((10, 10, 3))
-
-    # Logging the epoch-wise accuracy and confusion matrix
-    if multi_run is None:
-        writer.add_scalar(logging_label + '/accuracy', top1.avg, epoch)
-        save_image_and_log_to_tensorboard(writer, tag=logging_label + '/confusion_matrix',
-                                          image_tensor=confusion_matrix_heatmap, global_step=epoch)
-    else:
-        writer.add_scalar(logging_label + '/accuracy_{}'.format(multi_run), top1.avg, epoch)
-        save_image_and_log_to_tensorboard(writer, tag=logging_label + '/confusion_matrix_{}'.format(multi_run),
-                                          image_tensor=confusion_matrix_heatmap, global_step=epoch)
-
-    """
     logging.info(_prettyprint_logging_label(logging_label) +
                  ' epoch[{}]: '
                  'CER={cer.avg:.4f}\t'

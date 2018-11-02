@@ -21,7 +21,7 @@ from util.misc import checkpoint, adjust_learning_rate
 
 class HandwrittenTextRecognition:
     @staticmethod
-    def single_run(writer, current_log_folder, model_name, epochs, lr, decay_lr, validation_interval,
+    def single_run(writer, current_log_folder, model_name, epochs, lr, decay_lr, validation_interval, dictionnary_name,
                    **kwargs):
         """
         This is the main routine where train(), validate() and test() are called.
@@ -56,14 +56,17 @@ class HandwrittenTextRecognition:
         """
 
         # Setting up the dataloaders
-        train_loader, val_loader, test_loader = set_up_dataloaders(**kwargs)
+        train_loader, val_loader, test_loader = set_up_dataloaders(dictionnary_name=dictionnary_name, **kwargs)
         
-        num_classes = 61
+        # Compute number of character based on the dictionnary given
+        num_characters = None
+        if dictionnary_name == "esposalles":
+            num_characters = 61
         
         # Setting up model, optimizer, criterion
-        model, criterion, optimizer, best_value, start_epoch = set_up_model(num_classes=num_classes,
-                                                                            model_name=model_name,
+        model, criterion, optimizer, best_value, start_epoch = set_up_model(model_name=model_name,
                                                                             lr=lr,
+                                                                            num_characters=num_characters,
                                                                             train_loader=train_loader,
                                                                             **kwargs)
 

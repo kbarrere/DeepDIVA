@@ -296,4 +296,18 @@ def _htr_options(parser):
                                 type=str,
                                 default='line',
                                 choices=['line', 'word'],
-                                help='The the type of text/images to load.')
+                                help='the the type of text/images to load')
+    parser_htr.add_argument('--resize-height',
+                                type=int,
+                                help='the height to which the dataset is resized')
+    parser_htr.add_argument('--pad-width',
+                                type=int,
+                                help='the whidth to which the dataset is padded')
+    parser_htr.add_argument('--pad-text',
+                                type=int,
+                                help='the length in characters to which text transcriptions are padded.\nIt must be greater or equal to the maximum length of the transcritions')
+    parser_htr.add_argument('--dictionnary-name',
+                                type=str,
+                                default='esposalles',
+                                choices=['esposalles'],
+                                help='the name of the text dictionnary')

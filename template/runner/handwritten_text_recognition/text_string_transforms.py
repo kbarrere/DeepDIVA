@@ -16,7 +16,7 @@ class CTCLabelToTensor(object):
         ctc_label_tensor = torch.from_numpy(ctc_label_array)
         return ctc_label_tensor
 
-class PadToFixedSize(object):
+class PadTextToFixedSize(object):
     """
     Complete the value of the CTC labels so that the array has a fixed size
     """
@@ -26,13 +26,13 @@ class PadToFixedSize(object):
         self.fill_value = fill_value
     
     def __call__(self, ctc_label):
-        return self.pad_to_fixed_size(ctc_label)
+        return self.pad_text_to_fixed_size(ctc_label)
     
-    def pad_to_fixed_size(self, ctc_label):
+    def pad_text_to_fixed_size(self, ctc_label):
         n = len(ctc_label)
         
         if n > self.max_size:
-            logging.warning("Cannot pad image of size " + str(n) + " to a size of " + str(self.max_size))
+            logging.warning("Cannot pad text of length " + str(n) + " to a length of " + str(self.max_size))
             sys.exit(-1)
 
         for i in range(self.max_size - n):
@@ -40,13 +40,16 @@ class PadToFixedSize(object):
         
         return ctc_label
 
-class EsposallesCharToCTCLabel(object):
+class CharToCTCLabel(object):
     """
     Transform the target string to an integer array
     """
     
-    def __init__(self):
-        self.dic = esposalles_dict()
+    def __init__(self, dictionnary_name):
+        if dictionnary_name == "esposalles":
+            self.dic = esposalles_dict()
+        else:
+            logging.error("The provided dictionnary name (" + dictionnary_name + ") is not esposalles")
         
     def __call__(self, text):
         return self.esposalles_char_to_ctc_label(text)
@@ -58,7 +61,7 @@ class EsposallesCharToCTCLabel(object):
         return label
     
 def esposalles_dict():
-    dico = {
+    dic = {
         "#" : 1,
         "0" : 2,
         "1" : 3,
@@ -121,4 +124,4 @@ def esposalles_dict():
         " " : 60
     }
 
-    return dico
+    return dic
