@@ -11,7 +11,7 @@ from util.misc import AverageMeter
 
 from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
-def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=False, log_interval=25,
+def train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_name="iam", no_cuda=False, log_interval=25,
           **kwargs):
     """
     Training routine
@@ -34,6 +34,9 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         Specifies whether the GPU should be used or not. A value of 'True' means the CPU will be used.
     log_interval : int
         Interval limiting the logging of mini-batches. Default value of 10.
+    dictionnary_name : string
+        Name of the dictionnary used.
+        Determine the number of characters in the dataset.
 
     Returns
     ----------
@@ -69,7 +72,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter)
+        cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter, dictionnary_name)
         
         # Add loss, CER and WER to Tensorboard
         if multi_run is None:
@@ -111,7 +114,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
     return cer_meter.avg
 
 
-def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter):
+def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter, dictionnary_name):
     """
     This routing train the model passed as parameter for one mini-batch
 
@@ -137,6 +140,9 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
         Tracker for the overall WER
     loss_meter : AverageMeter
         Tracker for the overall loss
+    dictionnary_name : string
+        Name of the dictionnary used.
+        Determine the number of characters in the dataset.
 
     Returns
     -------
@@ -168,8 +174,8 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     probs = probs.detach()
     
     # Computes CER and WER
-    predictions = sample_text(probs, acts_len=acts_len)
-    references = convert_batch_to_sequence(target_var)
+    predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
+    references = convert_batch_to_sequence(target_var, dictionnary_name=dictionnary_name)
     
     cer = batch_cer(predictions, references)
     wer = batch_wer(predictions, references)

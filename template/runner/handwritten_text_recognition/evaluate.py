@@ -14,17 +14,17 @@ from util.misc import AverageMeter, _prettyprint_logging_label
 from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
 
-def validate(val_loader, model, criterion, writer, epoch, no_cuda=False, log_interval=20, **kwargs):
+def validate(val_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda=False, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to validate the model."""
-    return _evaluate(val_loader, model, criterion, writer, epoch, 'val', no_cuda, log_interval, **kwargs)
+    return _evaluate(val_loader, model, criterion, writer, epoch, dictionnary_name, 'val', no_cuda, log_interval, **kwargs)
 
 
-def test(test_loader, model, criterion, writer, epoch, no_cuda=False, log_interval=20, **kwargs):
+def test(test_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda=False, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to test the model"""
-    return _evaluate(test_loader, model, criterion, writer, epoch, 'test', no_cuda, log_interval, **kwargs)
+    return _evaluate(test_loader, model, criterion, writer, epoch, dictionnary_name, 'test', no_cuda, log_interval, **kwargs)
 
 
-def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cuda=False, log_interval=10, **kwargs):
+def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, logging_label, no_cuda=False, log_interval=10, **kwargs):
     """
     The evaluation routine
 
@@ -111,8 +111,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         probs = probs.detach()
         
         # Computes CER and WER
-        predictions = sample_text(probs, acts_len=acts_len)
-        references = convert_batch_to_sequence(target_var)
+        predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
+        references = convert_batch_to_sequence(target_var, dictionnary_name=dictionnary_name)
         cer = batch_cer(predictions, references)
         wer = batch_wer(predictions, references)
         

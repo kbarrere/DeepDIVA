@@ -3,6 +3,89 @@ import logging
 
 # Revert dictionnaries
 
+iam_chars = [
+    "<BLANK>",
+    "-",
+    ",",
+    ";",
+    ":",
+    "!",
+    "?",
+    "/",
+    ".",
+    "'",
+    "\"",
+    "(",
+    ")",
+    "*",
+    "&",
+    "#",
+    "+",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "a",
+    "A",
+    "b",
+    "B",
+    "c",
+    "C",
+    "d",
+    "D",
+    "e",
+    "E",
+    "f",
+    "F",
+    "g",
+    "G",
+    "h",
+    "H",
+    "i",
+    "I",
+    "j",
+    "J",
+    "k",
+    "K",
+    "l",
+    "L",
+    "m",
+    "M",
+    "n",
+    "N",
+    "o",
+    "O",
+    "p",
+    "P",
+    "q",
+    "Q",
+    "r",
+    "R",
+    "s",
+    "S",
+    "t",
+    "T",
+    "u",
+    "U",
+    "v",
+    "V",
+    "w",
+    "W",
+    "x",
+    "X",
+    "y",
+    "Y",
+    "z",
+    "Z",
+    " "
+]
+
 esposalles_chars = [
     '<BLANK>', #0
     '#', #1
@@ -67,7 +150,7 @@ esposalles_chars = [
     ' ' #60
 ]
 
-def sample_text(probs, acts_len=[], blank_index=0, char_list=esposalles_chars):
+def sample_text(probs, acts_len=[], blank_index=0, dictionnary_name="iam"):
     """
     Generates the predicted sequence based on the characters probabilities.
     The rules to generates the text are the following :
@@ -83,9 +166,9 @@ def sample_text(probs, acts_len=[], blank_index=0, char_list=esposalles_chars):
     blank_index : int
         The index of the blank character.
         Default is blank
-    char_list : char list
-        A list to convert indices into characters
-        default is esposalles_chars, that contains all characters from the esposalles database
+    dictionnary_name : string
+        Name of the dictionnary used.
+        Determine the number of characters in the dataset.
 
     Returns
     -------
@@ -97,6 +180,12 @@ def sample_text(probs, acts_len=[], blank_index=0, char_list=esposalles_chars):
     batch_size = len(probs)
     max_seq_size = len(probs[0])
     character_number = len(probs[0][0])
+    
+    char_list = []
+    if dictionnary_name == "iam":
+        char_list = iam_chars
+    elif dictionnary_name == "esposalles":
+        char_list = esposalles_chars
     
     for i in range(batch_size):
         
@@ -141,7 +230,14 @@ def convert_int_to_chars(indices, char_list):
     
     return chars_sequence
 
-def convert_batch_to_sequence(labels, char_list=esposalles_chars):
+def convert_batch_to_sequence(labels, dictionnary_name="iam"):
+    
+    char_list = []
+    if dictionnary_name == "iam":
+        char_list = iam_chars
+    elif dictionnary_name == "esposalles":
+        char_list = esposalles_chars
+    
     char_sequences = []
     
     for indices in labels:

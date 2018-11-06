@@ -46,10 +46,13 @@ class CharToCTCLabel(object):
     """
     
     def __init__(self, dictionnary_name):
-        if dictionnary_name == "esposalles":
+        if dictionnary_name == "iam":
+            self.dic = iam_dict()
+        elif dictionnary_name == "esposalles":
             self.dic = esposalles_dict()
         else:
             logging.error("The provided dictionnary name (" + dictionnary_name + ") is not esposalles")
+        self.dictionnary_name = dictionnary_name
         
     def __call__(self, text):
         return self.esposalles_char_to_ctc_label(text)
@@ -57,9 +60,97 @@ class CharToCTCLabel(object):
     def esposalles_char_to_ctc_label(self, text):
         label = []
         for c in text:
+            if c not in self.dic:
+                logging.error("Character " + str(c) + " is not in dictionnary " + self.dictionnary_name)
+                sys.exit(-1)
             label.append(self.dic.get(c))
         return label
-    
+
+def iam_dict():
+    dic = {
+        "-" : 1,
+        "," : 2,
+        ";" : 3,
+        ":" : 4,
+        "!" : 5,
+        "?" : 6,
+        "/" : 7,
+        "." : 8,
+        "'" : 9,
+        "\"" : 10,
+        "(" : 11,
+        ")" : 12,
+        "*" : 13,
+        "&" : 14,
+        "#" : 15,
+        "+" : 16,
+        "0" : 17,
+        "1" : 18,
+        "2" : 19,
+        "3" : 20,
+        "4" : 21,
+        "5" : 22,
+        "6" : 23,
+        "7" : 24,
+        "8" : 25,
+        "9" : 26,
+        "a" : 27,
+        "A" : 28,
+        "b" : 29,
+        "B" : 30,
+        "c" : 31,
+        "C" : 32,
+        "d" : 33,
+        "D" : 34,
+        "e" : 35,
+        "E" : 36,
+        "f" : 37,
+        "F" : 38,
+        "g" : 39,
+        "G" : 40,
+        "h" : 41,
+        "H" : 42,
+        "i" : 43,
+        "I" : 44,
+        "j" : 45,
+        "J" : 46,
+        "k" : 47,
+        "K" : 48,
+        "l" : 49,
+        "L" : 50,
+        "m" : 51,
+        "M" : 52,
+        "n" : 53,
+        "N" : 54,
+        "o" : 55,
+        "O" : 56,
+        "p" : 57,
+        "P" : 58,
+        "q" : 59,
+        "Q" : 60,
+        "r" : 61,
+        "R" : 62,
+        "s" : 63,
+        "S" : 64,
+        "t" : 65,
+        "T" : 66,
+        "u" : 67,
+        "U" : 68,
+        "v" : 69,
+        "V" : 70,
+        "w" : 71,
+        "W" : 72,
+        "x" : 73,
+        "X" : 74,
+        "y" : 75,
+        "Y" : 76,
+        "z" : 77,
+        "Z" : 78,
+        " " : 79
+    }
+
+    return dic
+
 def esposalles_dict():
     dic = {
         "#" : 1,

@@ -63,7 +63,10 @@ class HandwrittenTextRecognition:
         
         # Compute number of character based on the dictionnary given
         num_characters = None
-        if dictionnary_name == "esposalles":
+        # size of the alphabet + 1 (blank character)
+        if dictionnary_name == "iam":
+            num_characters = 80
+        elif dictionnary_name == "esposalles":
             num_characters = 61
         
         # Setting up model, optimizer, criterion
@@ -78,20 +81,20 @@ class HandwrittenTextRecognition:
         val_value = np.zeros((epochs + 1 - start_epoch))
         train_value = np.zeros((epochs - start_epoch))
 
-        val_value[-1] = HandwrittenTextRecognition._validate(val_loader, model, criterion, writer, -1, **kwargs)
+        val_value[-1] = HandwrittenTextRecognition._validate(val_loader, model, criterion, writer, -1, dictionnary_name, **kwargs)
         for epoch in range(start_epoch, epochs):
             # Train
-            train_value[epoch] = HandwrittenTextRecognition._train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
+            train_value[epoch] = HandwrittenTextRecognition._train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_name, **kwargs)
 
             # Validate
             if epoch % validation_interval == 0:
-                val_value[epoch] = HandwrittenTextRecognition._validate(val_loader, model, criterion, writer, epoch, **kwargs)
+                val_value[epoch] = HandwrittenTextRecognition._validate(val_loader, model, criterion, writer, epoch, dictionnary_name, **kwargs)
             if decay_lr is not None:
                 adjust_learning_rate(lr=lr, optimizer=optimizer, epoch=epoch, decay_lr_epochs=decay_lr)
             best_value = checkpoint(epoch, val_value[epoch], best_value, model, optimizer, current_log_folder, invert_best=True)
 
         # Test
-        test_value = HandwrittenTextRecognition._test(test_loader, model, criterion, writer, epochs - 1, **kwargs)
+        test_value = HandwrittenTextRecognition._test(test_loader, model, criterion, writer, epochs - 1, dictionnary_name, **kwargs)
         logging.info('Training completed')
 
         return train_value, val_value, test_value
@@ -103,13 +106,13 @@ class HandwrittenTextRecognition:
     """
 
     @classmethod
-    def _train(cls, train_loader, model, criterion, optimizer, writer, epoch, **kwargs):
-        return train.train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
+    def _train(cls, train_loader, model, criterion, optimizer, writer, epoch, dictionnary_name, **kwargs):
+        return train.train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_name, **kwargs)
 
     @classmethod
-    def _validate(cls, val_loader, model, criterion, writer, epoch, **kwargs):
-        return evaluate.validate(val_loader, model, criterion, writer, epoch, **kwargs)
+    def _validate(cls, val_loader, model, criterion, writer, epoch, dictionnary_name, **kwargs):
+        return evaluate.validate(val_loader, model, criterion, writer, epoch, dictionnary_name, **kwargs)
 
     @classmethod
-    def _test(cls, test_loader, model, criterion, writer, epoch, **kwargs):
-        return evaluate.test(test_loader, model, criterion, writer, epoch, **kwargs)
+    def _test(cls, test_loader, model, criterion, writer, epoch, dictionnary_name, **kwargs):
+        return evaluate.test(test_loader, model, criterion, writer, epoch, dictionnary_name, **kwargs)

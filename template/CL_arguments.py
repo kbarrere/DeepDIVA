@@ -308,6 +308,6 @@ def _htr_options(parser):
                                 help='the length in characters to which text transcriptions are padded.\nIt must be greater or equal to the maximum length of the transcritions')
     parser_htr.add_argument('--dictionnary-name',
                                 type=str,
-                                default='esposalles',
-                                choices=['esposalles'],
+                                default='iam',
+                                choices=['iam', 'esposalles'],
                                 help='the name of the text dictionnary')

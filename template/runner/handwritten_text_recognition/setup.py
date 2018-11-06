@@ -43,6 +43,9 @@ def set_up_dataloaders(piff_json, batch_size, workers, inmem, text_type, resize_
     inmem : boolean
         Flag : if False, the dataset is loaded in an online fashion i.e. only file names are stored
         and images are loaded on demand. This is slower than storing everything in memory.
+    dictionnary_name : string
+        Name of the dictionnary used.
+        Determine the number of characters in the dataset.
 
 
     Returns
