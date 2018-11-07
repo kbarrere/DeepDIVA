@@ -311,3 +311,11 @@ def _htr_options(parser):
                                 default='iam',
                                 choices=['iam', 'esposalles'],
                                 help='the name of the text dictionnary')
+    parser_htr.add_argument('--decode-train',
+                               action='store_true',
+                               default=False,
+                               help='Decode text during training and log to tensorboard and console training CER and WER.')
+    parser_htr.add_argument('--decode-val',
+                               action='store_true',
+                               default=False,
+                               help='Decode text during validation and log to tensorboard and console validation CER and WER.')
