@@ -19,6 +19,7 @@ class Beam:
 	def get_score(self):
 		return self.ptot
 
+
 class Beams:
 	"""
 	Stocks each label and associate to them a beam containing the probabilities
@@ -68,14 +69,17 @@ class Beams:
 			
 		return best_beams
 			
-			
-				
-			
-			
+	def keep_best_beams(self, best_beams):
+		for label in best_beams:
+			del self.beams[label]	
 	
+	def is_in(self, label):
+		return label in self.beams	
 
 
 def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
+	nbr_char = len(char_list)
+	
 	# Initialize with only the beam "" with a probability of finishing by a blank of 1
 	beams = Beams()
 	beams.add_beam([])
@@ -89,8 +93,31 @@ def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
 		max_len = min(max_len, len(probs))
 	
 	for t in range(max_len):
-		print("NANI ?")
-
+		best_beams = beams.best_beams()
+		beams.keep_best_beams() # Now beam contains only the N best beams (where N = beeam_width)
+		
+		curr_beams = Beams()
+		
+		for beam_label in best_beams:
+			curr_beam = beams.get_beam(beam_label)
+			
+			for i in range(nbr_chars):
+				
+				
+				if i == blank_index:
+					# Extend the current beam with a blank
+					curr_label = label
+					
+					if not curr_beams.is_in(curr_label):
+						curr_beams.add_beam(curr_label)
+					
+					curr_beams.get_beam(curr_label).add_pb(beams.get_beam(label).ptot * probs[t][i])
+				
+				elif len(label) > 0 and label[-1] == char_list[i]:
+					# Extend the beam with the same last letter
+					# Case 1 : the path finished by the letter
+					# Case 2 : the path finished by a blank
+			
 
 beams = Beams(2)
 
