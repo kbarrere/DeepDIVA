@@ -69,11 +69,11 @@ class Beams:
 		return best_beams
 			
 	def keep_best_beams(self, best_beams):
-		for label in best_beams:
-			del self.beams[label]	
+		for label in self.beams:
+			if label not in best_beams:
+				del self.beams[label]	
 	
 	def is_in(self, label):
-		return label in self.beams	
 		return label in self.beams	
 
 
@@ -101,50 +101,50 @@ def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
 		for beam_label in best_beams:
 			curr_beam = beams.get_beam(beam_label)
 			
-			for i in range(nbr_chars):
+			for i in range(nbr_char):
 				
 				
 				if i == blank_index:
 					# Extend the current beam with a blank
-					curr_label = label
+					curr_label = beam_label
 					
 					if not curr_beams.is_in(curr_label):
 						curr_beams.add_beam(curr_label)
 					
-					curr_beams.get_beam(curr_label).add_pb(beams.get_beam(label).ptot * probs[t][i])
+					curr_beams.get_beam(curr_label).add_pb(beams.get_beam(beam_label).ptot * probs[t][i])
 				
-				elif len(label) > 7 and label[-1] == char_list[i]:
+				elif len(beam_label) > 0 and beam_label[-1] == char_list[i]:
 					# Extend the beam with the same last letter
 					# Case 1 : the path finished by the letter
-					curr_label = label
+					curr_label = beam_label
 					
 					if not curr_beams.is_in(curr_label):
 						curr_beams.add_beam(curr_label)
 					
-					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(label).pnb * probs[t][i])
+					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(beam_label).pnb * probs[t][i])
 					
 					# Case 2 : the path finished by a blank
-					curr_label = label + char_list[i]
+					curr_label = beam_label + char_list[i]
 					
 					if not curr_beams.is_in(curr_label):
 						curr_beams.add_beam(curr_label)
 					
-					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(label).pb * probs[t][i])
+					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(beam_label).pb * probs[t][i])
 				
 				else:
 					#extend the beam with a letter that is not the last one
-					curr_label = label + char_list[i]
+					curr_label = beam_label + char_list[i]
 					
 					if not curr_beams.is_in(curr_label):
 						curr_beams.add_beam(curr_label)
 					
-					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(label).ptot * probs[t][i])
+					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(beam_label).ptot * probs[t][i])
 			
 		beams = curr_beams
 	
 	best_beams = beams.best_beams(1)
 	
-	return best_beams[0], beams.get_beam(best_beams[0]).get_score
+	return best_beams[0], beams.get_beam(best_beams[0]).get_score()
 
 beams = Beams()
 
