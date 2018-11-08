@@ -24,9 +24,8 @@ class Beams:
 	"""
 	Stocks each label and associate to them a beam containing the probabilities
 	"""
-	def __init__(self, beam_width):
+	def __init__(self):
 		self.beams = {}
-		self.beam_width = beam_width
 	
 	def add_beam(self, label):
 		self.beams[label] = Beam()
@@ -34,7 +33,7 @@ class Beams:
 	def get_beam(self, label):
 		return self.beams[label]
 	
-	def best_beams(self):
+	def best_beams(self, beam_width):
 		"""
 		Computes the N best beams where N is the beam width
 		It returns a sorted list of labels
@@ -47,10 +46,10 @@ class Beams:
 			score = self.get_beam(label).get_score()
 			
 			# Start by adding the current label if possible
-			if nbr_beams < self.beam_width:
+			if nbr_beams < beam_width:
 				best_beams.append(label)
 				nbr_beams += 1
-			elif score > self.get_beam(best_beams[self.beam_width-1]).get_score():
+			elif score > self.get_beam(best_beams[beam_width-1]).get_score():
 				best_beams.append(label)
 				nbr_beams += 1
 			
@@ -63,7 +62,7 @@ class Beams:
 					break
 			
 			# If the beam is to large, remove the last one
-			if nbr_beams > self.beam_width:
+			if nbr_beams > beam_width:
 				best_beams.pop()
 				nbr_beams -= 1
 			
@@ -75,6 +74,7 @@ class Beams:
 	
 	def is_in(self, label):
 		return label in self.beams	
+		return label in self.beams	
 
 
 def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
@@ -82,8 +82,8 @@ def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
 	
 	# Initialize with only the beam "" with a probability of finishing by a blank of 1
 	beams = Beams()
-	beams.add_beam([])
-	beams.get_beam([]).add_pb(1)
+	beams.add_beam("")
+	beams.get_beam("").add_pb(1)
 	
 	# Get the max_len, maximum number of algorithm iterations
 	# The probability matrix could cover more cases with padding
@@ -93,8 +93,8 @@ def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
 		max_len = min(max_len, len(probs))
 	
 	for t in range(max_len):
-		best_beams = beams.best_beams()
-		beams.keep_best_beams() # Now beam contains only the N best beams (where N = beeam_width)
+		best_beams = beams.best_beams(beam_width)
+		beams.keep_best_beams(best_beams) # Now beam contains only the N best beams (where N = beeam_width)
 		
 		curr_beams = Beams()
 		
@@ -113,13 +113,40 @@ def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
 					
 					curr_beams.get_beam(curr_label).add_pb(beams.get_beam(label).ptot * probs[t][i])
 				
-				elif len(label) > 0 and label[-1] == char_list[i]:
+				elif len(label) > 7 and label[-1] == char_list[i]:
 					# Extend the beam with the same last letter
 					# Case 1 : the path finished by the letter
+					curr_label = label
+					
+					if not curr_beams.is_in(curr_label):
+						curr_beams.add_beam(curr_label)
+					
+					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(label).pnb * probs[t][i])
+					
 					# Case 2 : the path finished by a blank
+					curr_label = label + char_list[i]
+					
+					if not curr_beams.is_in(curr_label):
+						curr_beams.add_beam(curr_label)
+					
+					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(label).pb * probs[t][i])
+				
+				else:
+					#extend the beam with a letter that is not the last one
+					curr_label = label + char_list[i]
+					
+					if not curr_beams.is_in(curr_label):
+						curr_beams.add_beam(curr_label)
+					
+					curr_beams.get_beam(curr_label).add_pnb(beams.get_beam(label).ptot * probs[t][i])
 			
+		beams = curr_beams
+	
+	best_beams = beams.best_beams(1)
+	
+	return best_beams[0], beams.get_beam(best_beams[0]).get_score
 
-beams = Beams(2)
+beams = Beams()
 
 beams.add_beam("aa")
 beams.add_beam("ab")
@@ -140,5 +167,11 @@ print(beams.get_beam("ab").get_score())
 print(beams.get_beam("ba").get_score())
 print(beams.get_beam("bb").get_score())
 
-print(beams.best_beams())
+print(beams.best_beams(2))
+
+probs = [[0.8, 0.2, 0.0], [0.6, 0.4, 0.0]]
+
+print(beam_search(probs, ["<BLANK>", "a", "b"]))
+
+
 
