@@ -145,33 +145,3 @@ def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
 	best_beams = beams.best_beams(1)
 	
 	return best_beams[0], beams.get_beam(best_beams[0]).get_score()
-
-beams = Beams()
-
-beams.add_beam("aa")
-beams.add_beam("ab")
-beams.add_beam("bb")
-beams.add_beam("ba")
-
-beams.get_beam("aa").add_pb(0)
-beams.get_beam("ab").add_pb(0.2)
-beams.get_beam("ba").add_pb(0.4)
-beams.get_beam("bb").add_pb(0.4)
-beams.get_beam("bb").add_pnb(0.3)
-beams.get_beam("ba").add_pnb(0.5)
-beams.get_beam("ab").add_pnb(0.3)
-beams.get_beam("aa").add_pnb(0.1)
-
-print(beams.get_beam("aa").get_score())
-print(beams.get_beam("ab").get_score())
-print(beams.get_beam("ba").get_score())
-print(beams.get_beam("bb").get_score())
-
-print(beams.best_beams(2))
-
-probs = [[0.8, 0.2, 0.0], [0.6, 0.4, 0.0]]
-
-print(beam_search(probs, ["<BLANK>", "a", "b"]))
-
-
-
