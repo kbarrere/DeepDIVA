@@ -144,4 +144,40 @@ def beam_search(probs, char_list, max_len=-1, blank_index=0, beam_width=10):
 	
 	best_beams = beams.best_beams(1)
 	
-	return best_beams[0], beams.get_beam(best_beams[0]).get_score()
+	return best_beams[0]
+
+def beam_search_batch(probs, char_list, acts_len=[], blank_index=0, beam_width=10):
+    """
+    
+    
+    Parameters
+    ----------
+    probs : tensor
+        Tensor/array containing the outputs of the network / the probability of each character for each frame
+        expected shape of : batch_size x frames_number x character_number
+    blank_index : int
+        The index of the blank character.
+        Default is blank
+    dictionnary_name : string
+        Name of the dictionnary used.
+        Determine the number of characters in the dataset.
+
+    Returns
+    -------
+    sequences : string array
+        The predicted sequence in an array of size batch_size
+    """
+    
+    sequences = []
+    
+    batch_size = len(probs)
+    
+    for i in range(batch_size):
+        probs_unit = probs[i]
+        max_len = len(probs[0])
+        if len(acts_len) != 0:
+            max_len = acts_len[i]
+        sequence = beam_search(probs_unit, char_list, max_len, blank_index, beam_width)
+        sequences.append(sequence)
+    
+    return sequences

@@ -115,7 +115,3 @@ def convert_int_to_chars(indices, char_list):
         chars_sequence += char_list[char_index]
     
     return chars_sequence
-
-probs = [[[0.8, 0.2, 0.0], [0.6, 0.4, 0.0]]]
-
-print(best_path_batch(probs, ["<BLANK>", "a", "b"]))
