@@ -77,7 +77,7 @@ class Beams:
 		return label in self.beams	
 
 
-def beam_search(probs, char_list, max_len=-1, beam_width=10, blank_index=0):
+def beam_search(probs, char_list, max_len=-1, blank_index=0, beam_width=10):
 	nbr_char = len(char_list)
 	
 	# Initialize with only the beam "" with a probability of finishing by a blank of 1
