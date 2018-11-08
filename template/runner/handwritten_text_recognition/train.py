@@ -30,13 +30,15 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_
         The tensorboard writer object. Used to log values on file for the tensorboard visualization.
     epoch : int
         Number of the epoch (for logging purposes).
-    no_cuda : boolean
-        Specifies whether the GPU should be used or not. A value of 'True' means the CPU will be used.
-    log_interval : int
-        Interval limiting the logging of mini-batches. Default value of 10.
     dictionnary_name : string
         Name of the dictionnary used.
         Determine the number of characters in the dataset.
+    no_cuda : boolean
+        Specifies whether the GPU should be used or not. A value of 'True' means the CPU will be used.
+    decode_train : boolean
+        Specifies whether the to decode during the training phase.
+    log_interval : int
+        Interval limiting the logging of mini-batches. Default value of 10.
 
     Returns
     ----------
@@ -152,6 +154,8 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     dictionnary_name : string
         Name of the dictionnary used.
         Determine the number of characters in the dataset.
+    decode_train : boolean
+        Specifies whether the to decode during the training phase.
 
     Returns
     -------

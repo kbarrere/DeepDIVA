@@ -14,17 +14,17 @@ from util.misc import AverageMeter, _prettyprint_logging_label
 from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
 
 
-def validate(val_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda=False, log_interval=20, **kwargs):
+def validate(val_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda, decode_val, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to validate the model."""
-    return _evaluate(val_loader, model, criterion, writer, epoch, dictionnary_name, 'val', no_cuda, log_interval, **kwargs)
+    return _evaluate(val_loader, model, criterion, writer, epoch, dictionnary_name, 'val', no_cuda, decode_val,log_interval, **kwargs)
 
 
-def test(test_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda=False, log_interval=20, **kwargs):
+def test(test_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to test the model"""
-    return _evaluate(test_loader, model, criterion, writer, epoch, dictionnary_name, 'test', no_cuda, log_interval, **kwargs)
+    return _evaluate(test_loader, model, criterion, writer, epoch, dictionnary_name, 'test', no_cuda, True,log_interval, **kwargs)
 
 
-def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, logging_label, no_cuda=False, log_interval=10, **kwargs):
+def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, logging_label, no_cuda, decode, log_interval=10, **kwargs):
     """
     The evaluation routine
 
@@ -67,10 +67,6 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
     # Iterate over whole evaluation set
     end = time.time()
 
-    # Empty lists to store the predictions and target values
-    preds = []
-    targets = []
-
     pbar = tqdm(enumerate(data_loader), total=len(data_loader), unit='batch', ncols=150, leave=False)
     for batch_idx, (input, target, target_len, image_width) in pbar:
         
@@ -111,38 +107,37 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
         probs = probs.detach()
         
         # Computes CER and WER
-        predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
-        references = convert_batch_to_sequence(target_var, dictionnary_name=dictionnary_name)
-        cer = batch_cer(predictions, references)
-        wer = batch_wer(predictions, references)
+        if decode:
+            predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
+            references = convert_batch_to_sequence(target_var, dictionnary_name=dictionnary_name)
+            cer = batch_cer(predictions, references)
+            wer = batch_wer(predictions, references)
+            
+            cers.update(cer, input.size(0))
+            wers.update(wer, input.size(0))
         
-        cers.update(cer, input.size(0))
-        wers.update(wer, input.size(0))
-        
-        # Temp
-        if batch_idx == 0:
-            logging.info("Predicted Sequence: " + str(predictions))
-            logging.info("True labels: " + str(references))
-            logging.info("CER: " + str(cer))
-            logging.info("WER: " + str(wer))
+            # Temp
+            if batch_idx == 0:
+                logging.info("Predicted Sequence: " + str(predictions))
+                logging.info("True labels: " + str(references))
+                logging.info("CER: " + str(cer))
+                logging.info("WER: " + str(wer))
         
         loss = criterion(acts, labels, acts_len, labels_len)
         
         losses.update(loss.data[0], input.size(0))
 
-        # Get the predictions
-        _ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
-        _ = [targets.append(item) for item in target.cpu().numpy()]
-
         # Add loss, CER and WER to Tensorboard
         if multi_run is None:
             writer.add_scalar(logging_label + '/mb_loss', loss.data[0], epoch * len(data_loader) + batch_idx)
-            writer.add_scalar(logging_label + '/mb_cer', cer, epoch * len(data_loader) + batch_idx)
-            writer.add_scalar(logging_label + '/mb_wer', wer, epoch * len(data_loader) + batch_idx)
+            if decode:
+                writer.add_scalar(logging_label + '/mb_cer', cer, epoch * len(data_loader) + batch_idx)
+                writer.add_scalar(logging_label + '/mb_wer', wer, epoch * len(data_loader) + batch_idx)
         else:
             writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0], epoch * len(data_loader) + batch_idx)
-            writer.add_scalar(logging_label + '/mb_cer_{}'.format(multi_run), cer, epoch * len(data_loader) + batch_idx)
-            writer.add_scalar(logging_label + '/mb_wer_{}'.format(multi_run), wer, epoch * len(data_loader) + batch_idx)
+            if decode:
+                writer.add_scalar(logging_label + '/mb_cer_{}'.format(multi_run), cer, epoch * len(data_loader) + batch_idx)
+                writer.add_scalar(logging_label + '/mb_wer_{}'.format(multi_run), wer, epoch * len(data_loader) + batch_idx)
 
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -152,18 +147,42 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
             pbar.set_description(logging_label +
                                  ' epoch [{0}][{1}/{2}]\t'.format(epoch, batch_idx, len(data_loader)))
 
-            pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
-                             CER='{cer.avg:.4f}\t'.format(cer=cers),
-                             WER='{wer.avg:.4f}\t'.format(wer=wers),
-                             Loss='{loss.avg:.4f}\t'.format(loss=losses),
-                             Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
+            if decode:
+                pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
+                                 CER='{cer.avg:.4f}\t'.format(cer=cers),
+                                 WER='{wer.avg:.4f}\t'.format(wer=wers),
+                                 Loss='{loss.avg:.4f}\t'.format(loss=losses),
+                                 Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
+            else:
+                pbar.set_postfix(Time='{batch_time.avg:.3f}\t'.format(batch_time=batch_time),
+                                 Loss='{loss.avg:.4f}\t'.format(loss=losses),
+                                 Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
-    logging.info(_prettyprint_logging_label(logging_label) +
-                 ' epoch[{}]: '
-                 'CER={cer.avg:.4f}\t'
-                 'WER={wer.avg:.4f}\t'
-                 'Loss={loss.avg:.4f}\t'
-                 'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
-                 .format(epoch, batch_time=batch_time, data_time=data_time, cer=cers, wer=wers, loss=losses))
+    if decode:
+        logging.info(_prettyprint_logging_label(logging_label) +
+                     ' epoch[{}]: '
+                     'CER={cer.avg:.4f}\t'
+                     'WER={wer.avg:.4f}\t'
+                     'Loss={loss.avg:.4f}\t'
+                     'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
+                     .format(epoch, batch_time=batch_time, data_time=data_time, cer=cers, wer=wers, loss=losses))
+    else:
+        logging.info(_prettyprint_logging_label(logging_label) +
+                     ' epoch[{}]: '
+                     'Loss={loss.avg:.4f}\t'
+                     'Batch time={batch_time.avg:.3f} ({data_time.avg:.3f} to load data)'
+                     .format(epoch, batch_time=batch_time, data_time=data_time, loss=losses))
 
-    return cers.avg
+    # Logging the epoch-wise CER and WER
+    if multi_run is None:
+        if decode:
+            writer.add_scalar('train/cer', cers.avg, epoch)
+            writer.add_scalar('train/wer', wers.avg, epoch)
+    else:
+        if decode:
+            writer.add_scalar('train/cer_{}'.format(multi_run), cers.avg, epoch)
+            writer.add_scalar('train/wer_{}'.format(multi_run), wers.avg, epoch)
+
+    if decode:
+        return cers.avg
+    return losses.avg
