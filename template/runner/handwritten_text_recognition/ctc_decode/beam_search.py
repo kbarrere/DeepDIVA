@@ -69,7 +69,7 @@ class Beams:
 		return best_beams
 			
 	def keep_best_beams(self, best_beams):
-		for label in self.beams:
+		for label in list(self.beams): # Get a copy of all keys and iterate over it to delete the true keys
 			if label not in best_beams:
 				del self.beams[label]	
 	

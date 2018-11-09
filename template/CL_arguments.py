@@ -319,3 +319,11 @@ def _htr_options(parser):
                                action='store_true',
                                default=False,
                                help='Decode text during validation and log to tensorboard and console validation CER and WER.')
+    parser_htr.add_argument('--ctc-decoder',
+                                type=str,
+                                default='bestpath',
+                                choices=['bestpath', 'beamsearch'],
+                                help='the name of the ctc decoder to use')
+    parser_htr.add_argument('--beam-width',
+                                type=int,
+                                help='The width of the beam when using a beam search ctc decoder.\nIf the argument is not set, the default value is 10')

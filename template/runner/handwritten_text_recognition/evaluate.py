@@ -12,6 +12,7 @@ from tqdm import tqdm
 from util.misc import AverageMeter, _prettyprint_logging_label
 
 from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
+from template.runner.handwritten_text_recognition.ctc_decode.ctc_decode import ctc_decode
 
 
 def validate(val_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda, decode_val, log_interval=20, **kwargs):
@@ -98,8 +99,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
         # Only use activation before zero padding
         image_width = image_width.type(torch.IntTensor)
         
-        # TODO: use models attributes ?
-        acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
+        acts_len = ((image_width - 2) // 2 - 2) // 2 - 5 # TODO: use models attributes ?
         
         labels_len = target_len.type(torch.IntTensor)
         
@@ -108,7 +108,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
         
         # Computes CER and WER
         if decode:
-            predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
+            #predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
+            predictions = ctc_decode(probs, acts_len, dictionnary_name, **kwargs)
             references = convert_batch_to_sequence(target_var, dictionnary_name=dictionnary_name)
             cer = batch_cer(predictions, references)
             wer = batch_wer(predictions, references)
