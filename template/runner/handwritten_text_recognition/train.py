@@ -9,7 +9,8 @@ from tqdm import tqdm
 # DeepDIVA
 from util.misc import AverageMeter
 
-from template.runner.handwritten_text_recognition.text_processing import sample_text, convert_batch_to_sequence, batch_cer, batch_wer
+from template.runner.handwritten_text_recognition.text_processing import convert_batch_to_sequence, batch_cer, batch_wer
+from template.runner.handwritten_text_recognition.ctc_decode.ctc_decode import ctc_decode
 
 def train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_name, no_cuda, decode_train, log_interval=25,
           **kwargs):
@@ -74,7 +75,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
-        cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter, dictionnary_name, decode_train)
+        cer, wer, loss = train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter, dictionnary_name, decode_train, **kwargs)
         
         # Add loss, CER and WER to Tensorboard
         if multi_run is None:
@@ -125,7 +126,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_
     return loss_meter.avg
 
 
-def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter, dictionnary_name, decode_train):
+def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, target_len, image_width, cer_meter, wer_meter, loss_meter, dictionnary_name, decode_train, **kwargs):
     """
     This routing train the model passed as parameter for one mini-batch
 
@@ -191,7 +192,7 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     wer = 0.0
     
     if decode_train:
-        predictions = sample_text(probs, acts_len=acts_len, dictionnary_name=dictionnary_name)
+        predictions = ctc_decode(probs, acts_len, dictionnary_name, **kwargs)
         references = convert_batch_to_sequence(target_var, dictionnary_name=dictionnary_name)
         
         cer = batch_cer(predictions, references)
