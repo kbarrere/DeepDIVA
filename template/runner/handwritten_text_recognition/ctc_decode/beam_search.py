@@ -1,3 +1,6 @@
+import logging
+import torch.nn as nn
+
 class Beam:
 	"""
 	Contains probabilities of a single beam
@@ -74,7 +77,26 @@ class Beams:
 				del self.beams[label]	
 	
 	def is_in(self, label):
-		return label in self.beams	
+		return label in self.beams
+	
+	def normalize(self):
+		"""
+		Normalize the probabilities of each beam
+		This has the effect to increase all values when they are all very low
+		This is usefull when having Long sequence and/or big alphabet
+		"""
+		
+		tot = 0
+		
+		for label in self.beams:
+			tot += self.get_beam(label).ptot
+		
+		#Normalize here
+		for label in self.beams:
+			beam = self.get_beam(label)
+			beam.pb /= tot
+			beam.pnb /= tot
+			beam.ptot /= tot
 
 
 def beam_search(probs, char_list, max_len=-1, blank_index=0, beam_width=10):
@@ -93,16 +115,18 @@ def beam_search(probs, char_list, max_len=-1, blank_index=0, beam_width=10):
 		max_len = min(max_len, len(probs))
 	
 	for t in range(max_len):
+		
 		best_beams = beams.best_beams(beam_width)
+		
 		beams.keep_best_beams(best_beams) # Now beam contains only the N best beams (where N = beeam_width)
+		beams.normalize()
 		
 		curr_beams = Beams()
 		
 		for beam_label in best_beams:
 			curr_beam = beams.get_beam(beam_label)
-			
+
 			for i in range(nbr_char):
-				
 				
 				if i == blank_index:
 					# Extend the current beam with a blank

@@ -18,6 +18,11 @@ def ctc_decode(probs, acts_len, dictionnary_name, ctc_decoder, beam_width, **kwa
     elif ctc_decoder == "beamsearch":
         if not beam_width:
             beam_width = 10
+        
+        # Apply a softmax to the probabilities
+        s = nn.Softmax(dim=2)
+		probs = s(probs)
+        
         return beam_search_batch(probs, char_list, acts_len, blank_index, beam_width)
     
     else:
