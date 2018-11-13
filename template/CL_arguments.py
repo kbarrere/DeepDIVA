@@ -311,6 +311,9 @@ def _htr_options(parser):
                                 default='iam',
                                 choices=['iam', 'esposalles'],
                                 help='the name of the text dictionnary')
+    parser_htr.add_argument('--char-list',
+                                type=str,
+                                help='a text file containing the list of all characters (one character per line)')
     parser_htr.add_argument('--decode-train',
                                action='store_true',
                                default=False,
