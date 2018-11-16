@@ -97,7 +97,7 @@ class _CRNN(nn.Module):
             nn.BatchNorm2d(128)
         )
 
-        self.features_size = (((self.expected_input_size[0] - 2) // 2 - 2) // 2 -2 ) // 2 - 5, (((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2) // 2 - 3
+        self.features_size = (((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2 ) // 2 - 5, (((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2) // 2 - 3
         
         self.collapse = Collapse(height=self.features_size[0], width=1)
         

@@ -99,7 +99,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
         # Only use activation before zero padding
         image_width = image_width.type(torch.IntTensor)
         
-        acts_len = ((image_width - 2) // 2 - 2) // 2 - 5 # TODO: use models attributes ?
+        acts_len = (((image_width - 2) // 2 - 2) // 2 - 2) // 2 - 3 # TODO: use models attributes ?
         
         labels_len = target_len.type(torch.IntTensor)
         

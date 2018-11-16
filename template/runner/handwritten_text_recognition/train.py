@@ -180,7 +180,7 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     image_width = image_width.type(torch.IntTensor)
     
     # TODO: use models attributes ?
-    acts_len = ((image_width - 2) // 2 - 2) // 2 - 5
+    acts_len = (((image_width - 2) // 2 - 2) // 2 - 2) // 2 - 3
     
     labels_len = target_len.type(torch.IntTensor)
     
