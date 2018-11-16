@@ -66,6 +66,8 @@ class HandwrittenTextRecognition:
         # size of the alphabet + 1 (blank character)
         if dictionnary_name == "iam":
             num_characters = 80
+        elif dictionnary_name == "read2018":
+            num_characters = 98
         elif dictionnary_name == "esposalles":
             num_characters = 61
         

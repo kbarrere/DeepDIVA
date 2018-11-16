@@ -309,7 +309,7 @@ def _htr_options(parser):
     parser_htr.add_argument('--dictionnary-name',
                                 type=str,
                                 default='iam',
-                                choices=['iam', 'esposalles'],
+                                choices=['iam', 'read2018', 'esposalles'],
                                 help='the name of the text dictionnary')
     parser_htr.add_argument('--decode-train',
                                action='store_true',

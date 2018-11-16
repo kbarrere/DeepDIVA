@@ -48,10 +48,12 @@ class CharToCTCLabel(object):
     def __init__(self, dictionnary_name):
         if dictionnary_name == "iam":
             self.dic = iam_dict()
+        elif dictionnary_name == "read2018":
+            self.dic = read2018_dict()
         elif dictionnary_name == "esposalles":
             self.dic = esposalles_dict()
         else:
-            logging.error("The provided dictionnary name (" + dictionnary_name + ") is not esposalles")
+            logging.error("The provided dictionnary name (" + dictionnary_name + ") is not iam, read2018 or esposalles")
         self.dictionnary_name = dictionnary_name
         
     def __call__(self, text):
@@ -149,6 +151,109 @@ def iam_dict():
         " " : 79
     }
 
+    return dic
+
+def read2018_dict():
+    dic = {
+        '=' : 1,
+        '¬' : 2,
+        '|' : 3,
+        '°' : 4,
+        '┌' : 5,
+        '│' : 6,
+        ' ' : 7,
+        '-' : 8,
+        ',' : 9,
+        ';' : 10,
+        ':' : 11,
+        '!' : 12,
+        '?' : 13,
+        '/' : 14,
+        '.' : 15,
+        '·' : 16,
+        '\\' : 17,
+        '’' : 18,
+        '"' : 19,
+        '”' : 20,
+        '«' : 21,
+        '»' : 22,
+        '(' : 23,
+        ')' : 24,
+        '[' : 25,
+        ']' : 26,
+        '§' : 27,
+        '\'' : 28,
+        '&' : 29,
+        '—' : 30,
+        '0' : 31,
+        '1' : 32,
+        '2' : 33,
+        '3' : 34,
+        '4' : 35,
+        '5' : 36,
+        '6' : 37,
+        '7' : 38,
+        '8' : 39,
+        '9' : 40,
+        'a' : 41,
+        'A' : 42,
+        'æ' : 43,
+        'b' : 44,
+        'B' : 45,
+        'c' : 46,
+        'C' : 47,
+        'd' : 48,
+        'D' : 49,
+        'e' : 50,
+        'E' : 51,
+        'f' : 52,
+        'F' : 53,
+        'g' : 54,
+        'G' : 55,
+        'h' : 56,
+        'H' : 57,
+        'i' : 58,
+        'I' : 59,
+        'j' : 60,
+        'J' : 61,
+        'k' : 62,
+        'K' : 63,
+        'l' : 64,
+        'L' : 65,
+        'm' : 66,
+        'M' : 67,
+        'n' : 68,
+        'N' : 69,
+        'o' : 70,
+        'O' : 71,
+        'ø' : 72,
+        'p' : 73,
+        'P' : 74,
+        'q' : 75,
+        'Q' : 76,
+        'r' : 77,
+        'R' : 78,
+        's' : 79,
+        'S' : 80,
+        'ß' : 81,
+        't' : 82,
+        'T' : 83,
+        'u' : 84,
+        'U' : 85,
+        'v' : 86,
+        'V' : 87,
+        'w' : 88,
+        'W' : 89,
+        'x' : 90,
+        'X' : 91,
+        'y' : 92,
+        'Y' : 93,
+        'z' : 94,
+        'Z' : 95,
+        'ʒ' : 96,
+        '–' : 97
+    }
+    
     return dic
 
 def esposalles_dict():

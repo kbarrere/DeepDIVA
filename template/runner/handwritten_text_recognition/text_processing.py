@@ -86,6 +86,107 @@ iam_chars = [
     " "
 ]
 
+read2018_chars = [
+    "<BLANK>",
+    '=',
+    '¬',
+    '|',
+    '°',
+    '┌',
+    '│',
+    ' ',
+    '-',
+    ',',
+    ';',
+    ':',
+    '!',
+    '?',
+    '/',
+    '.',
+    '·',
+    '\\',
+    '’',
+    '"',
+    '”',
+    '«',
+    '»',
+    '(',
+    ')',
+    '[',
+    ']',
+    '§',
+    '\'',
+    '&',
+    '—',
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    'a',
+    'A',
+    'æ',
+    'b',
+    'B',
+    'c',
+    'C',
+    'd',
+    'D',
+    'e',
+    'E',
+    'f',
+    'F',
+    'g',
+    'G',
+    'h',
+    'H',
+    'i',
+    'I',
+    'j',
+    'J',
+    'k',
+    'K',
+    'l',
+    'L',
+    'm',
+    'M',
+    'n',
+    'N',
+    'o',
+    'O',
+    'ø',
+    'p',
+    'P',
+    'q',
+    'Q',
+    'r',
+    'R',
+    's',
+    'S',
+    'ß',
+    't',
+    'T',
+    'u',
+    'U',
+    'v',
+    'V',
+    'w',
+    'W',
+    'x',
+    'X',
+    'y',
+    'Y',
+    'z',
+    'Z',
+    'ʒ',
+    '–'
+]
+
 esposalles_chars = [
     '<BLANK>', #0
     '#', #1
@@ -184,6 +285,8 @@ def sample_text(probs, acts_len=[], blank_index=0, dictionnary_name="iam"):
     char_list = []
     if dictionnary_name == "iam":
         char_list = iam_chars
+    elif dictionnary_name == "read2018":
+        char_list = read2018_chars
     elif dictionnary_name == "esposalles":
         char_list = esposalles_chars
     
@@ -235,6 +338,8 @@ def convert_batch_to_sequence(labels, dictionnary_name="iam"):
     char_list = []
     if dictionnary_name == "iam":
         char_list = iam_chars
+    elif dictionnary_name == "read2018":
+        char_list = read2018_chars
     elif dictionnary_name == "esposalles":
         char_list = esposalles_chars
     
