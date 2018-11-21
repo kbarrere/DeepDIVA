@@ -176,7 +176,7 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     optimizer = _get_optimizer(optimizer_name, model, **kwargs)
 
     # Get the criterion
-    criterion = CTCLoss(size_average=True, length_average=True)
+    criterion = CTCLoss(size_average=True, length_average=False)
     
     # Transfer model to GPU (if desired)
     if not no_cuda:

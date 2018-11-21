@@ -46,7 +46,7 @@ class _CRNN(nn.Module):
 
     """
 
-    def __init__(self, output_channels=61, expected_input_size=(128, 2174)):
+    def __init__(self, output_channels=61, expected_input_size=(128, 2174), num_lstm=3):
         """
         Creates a CRNN model from the scratch.
 
@@ -62,6 +62,7 @@ class _CRNN(nn.Module):
         super(_CRNN, self).__init__()
 
         self.expected_input_size = expected_input_size
+        self.num_lstm = num_lstm
 
         # Convolutional layers
         self.conv1 = nn.Sequential(
@@ -101,7 +102,7 @@ class _CRNN(nn.Module):
         
         self.collapse = Collapse(height=self.features_size[0], width=1)
         
-        self.lstm = nn.LSTM(128, 128, num_layers=3, batch_first=True, dropout=0.5, bidirectional=True)
+        self.lstm = nn.LSTM(128, 128, num_layers=self.num_lstm, batch_first=True, dropout=0.5, bidirectional=True)
 
         self.fc = nn.Linear(256, output_channels)
 
@@ -153,3 +154,60 @@ def crnn(pretrained=False,**kwargs):
         logging.info('No pretraining available for this model. Training a network form scratch')
 
     return model
+
+def crnn2(pretrained=False,**kwargs):
+    """
+    Returns a CRNN model.
+
+    Parameters
+    ----------
+    """
+    model = _CRNN(num_lstm=2, **kwargs)
+
+    if pretrained:
+        logging.info('No pretraining available for this model. Training a network form scratch')
+
+    return model
+
+def crnn3(pretrained=False,**kwargs):
+    """
+    Returns a CRNN model.
+
+    Parameters
+    ----------
+    """
+    model = _CRNN(num_lstm=3, **kwargs)
+
+    if pretrained:
+        logging.info('No pretraining available for this model. Training a network form scratch')
+
+    return model
+
+def crnn4(pretrained=False,**kwargs):
+    """
+    Returns a CRNN model.
+
+    Parameters
+    ----------
+    """
+    model = _CRNN(num_lstm=4, **kwargs)
+
+    if pretrained:
+        logging.info('No pretraining available for this model. Training a network form scratch')
+
+    return model
+
+def crnn5(pretrained=False,**kwargs):
+    """
+    Returns a CRNN model.
+
+    Parameters
+    ----------
+    """
+    model = _CRNN(num_lstm=5, **kwargs)
+
+    if pretrained:
+        logging.info('No pretraining available for this model. Training a network form scratch')
+
+    return model
+

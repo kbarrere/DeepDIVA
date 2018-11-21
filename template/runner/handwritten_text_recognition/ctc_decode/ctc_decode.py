@@ -1,6 +1,8 @@
 import logging
 import sys
 
+import torch.nn as nn
+
 # DeepDIVA HTR
 from template.runner.handwritten_text_recognition.ctc_decode.best_path import best_path_batch
 from template.runner.handwritten_text_recognition.ctc_decode.beam_search import beam_search_batch
