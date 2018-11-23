@@ -1,5 +1,6 @@
 import logging
 
+import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
@@ -14,7 +15,8 @@ class Collapse(nn.Module):
         self.mp = nn.MaxPool2d(kernel_size=(height, width))
 
     def forward(self, x):
-        x = self.mp(x)
+        # ~ x = self.mp(x)
+        x = torch.sum(x, dim=2)
         x = x.view(x.size()[0], x.size()[1], -1)
         return x
 
