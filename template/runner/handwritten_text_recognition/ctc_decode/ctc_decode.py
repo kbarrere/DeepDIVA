@@ -117,7 +117,7 @@ def get_char_list(dictionnary_name):
               ]
     elif dictionnary_name == "read2018":
         return [
-                "<BLANK>"
+                "<BLANK>",
                 '=',
                 '¬',
                 '|',
@@ -214,7 +214,7 @@ def get_char_list(dictionnary_name):
                 'z',
                 'Z',
                 'ʒ',
-                '–',
+                '–'
                ]
     elif dictionnary_name == "esposalles":
         return [
