@@ -15,8 +15,7 @@ class Collapse(nn.Module):
         self.mp = nn.MaxPool2d(kernel_size=(height, width))
 
     def forward(self, x):
-        # ~ x = self.mp(x)
-        x = torch.sum(x, dim=2)
+        x = self.mp(x)
         x = x.view(x.size()[0], x.size()[1], -1)
         return x
 
@@ -48,7 +47,7 @@ class _CRNN(nn.Module):
 
     """
 
-    def __init__(self, output_channels=61, expected_input_size=(128, 2174), num_lstm=3):
+    def __init__(self, output_channels=80, expected_input_size=(128, 5248), num_lstm=3):
         """
         Creates a CRNN model from the scratch.
 
