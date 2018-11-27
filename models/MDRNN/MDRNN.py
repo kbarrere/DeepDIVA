@@ -167,16 +167,18 @@ class MDRNN2D(nn.Module):
         batch, input_size, height, width = input.size()
         directions = 4
         
-        # ~ output_map = torch.ones(batch, self.hidden_size, directions, height, width)
+        # ~ logging.warning("start forward")
+        
+        output_map = torch.ones(batch, self.hidden_size, directions, height, width)
         output_map_ = torch.ones(directions, height, width, batch, self.hidden_size)
         if not self.no_cuda:
             output_map_ = output_map_.cuda()
     
-        
         final_hidden = None
         # 2d case, we need general case?
-        x_ori, x_stop, x_steps = [0, 0, width-1, width-1], [width-1, width-1, 0, 0], [1, 1, -1, -1]
-        y_ori, y_stop, y_steps = [0, height-1, 0, height-1], [height-1, 0, height-1, 0], [1, -1, 1, -1]
+        x_ori, x_stop, x_steps = [0, 0, width-1, width-1], [width, width, -1, -1], [1, 1, -1, -1]
+        y_ori, y_stop, y_steps = [0, height-1, 0, height-1], [height, -1, height, -1], [1, -1, 1, -1]
+
         for axis_idx, rnn in enumerate(self.rnns):
             last_row = []
             for i in range(y_ori[axis_idx], y_stop[axis_idx], y_steps[axis_idx]):
@@ -198,11 +200,11 @@ class MDRNN2D(nn.Module):
                     if y_steps[axis_idx] > 0:
                         i_start, i_end = i, i + 1
                     else:
-                        i_start, i_end = i - 1, i
+                        i_start, i_end = i, i + 1
                     if x_steps[axis_idx] > 0:
                         j_start, j_end = j, j + 1
                     else:
-                        j_start, j_end = j - 1, j
+                        j_start, j_end = j, j + 1
 
                     input_step = input[:, :, i_start:i_end, j_start:j_end].contiguous()
                     output, last_h = rnn(input_step.view(batch, -1).unsqueeze(0), h, h2)
@@ -229,4 +231,8 @@ class MDRNN2D(nn.Module):
                 final_hidden = torch.cat((final_hidden, output_hidden.squeeze(0)), 1)
         
         output_map = output_map_.permute(3, 4, 0, 1, 2)
-        return output_map
+        
+        # ~ logging.warning("end forward")
+        
+        # ~ return final_hidden
+        return final_hidden, output_map

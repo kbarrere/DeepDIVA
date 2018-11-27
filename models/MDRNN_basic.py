@@ -21,6 +21,24 @@ class Flatten(nn.Module):
         return x
 
 
+class Average(nn.Module):
+    def forward(self, x):
+        x = torch.mean(x, dim=2)
+        return x
+        
+
+class Sum(nn.Module):
+    def forward(self, x):
+        x = torch.sum(x, dim=2)
+        return x
+
+
+class Test(nn.Module):
+    def forward(self, x):
+        x = (x.contiguous).view(x.size(0), x.size(1) * 4, x.size(3), x.size(4))
+        return x
+
+
 class MDRNN_basic(nn.Module):
     """
     Simple feed forward convolutional neural network
@@ -52,9 +70,50 @@ class MDRNN_basic(nn.Module):
         super(MDRNN_basic, self).__init__()
 
         self.expected_input_size = (32, 32)
-
-        self.mdlstm = MDRNN2D(input_channels, 32, rnn_type='lstm', no_cuda=no_cuda)
-        self.fc = nn.Linear(4 * 32, output_channels)
+        
+        # ~ self.bloc1 = nn.Sequential(
+            # ~ nn.Conv2d(input_channels, 10, kernel_size=3, stride=1, padding=0),
+            # ~ nn.MaxPool2d(kernel_size=2, stride=2),
+            # ~ nn.Tanh(),
+            # ~ MDRNN2D(10, 20, rnn_type='lstm', no_cuda=no_cuda),
+            # ~ Average()
+            # ~ Test()
+        # ~ )
+        
+        # ~ self.bloc2 = nn.Sequential(
+            # ~ nn.Conv2d(20, 30, kernel_size=3, stride=1, padding=0),
+            # ~ nn.MaxPool2d(kernel_size=2, stride=2),
+            # ~ nn.Tanh(),
+            # ~ MDRNN2D(30, 40, rnn_type='lstm', no_cuda=no_cuda),
+            # ~ Average()
+            # ~ Test()
+        # ~ )
+        
+        # ~ self.bloc3 = nn.Sequential(
+            # ~ nn.Conv2d(40, 50, kernel_size=3, stride=1, padding=0),
+            # ~ nn.MaxPool2d(kernel_size=2, stride=2),
+            # ~ nn.Tanh(),
+            # ~ MDRNN2D(50, 60, rnn_type='lstm', no_cuda=no_cuda),
+            # ~ Average()
+            # ~ Test()
+        # ~ )
+        
+        # ~ self.fc = nn.Sequential(
+            # ~ Flatten(),
+            # ~ nn.Linear(240, 128),
+            # ~ nn.Linear(128, output_channels)
+        # ~ )
+        
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(input_channels, 10, kernel_size=3, stride=1, padding=0),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Tanh()
+        )
+        
+        self.mdlstm = MDRNN2D(10, 20, rnn_type='lstm', no_cuda=no_cuda)
+        
+        self.fc = nn.Linear(80, output_channels)
+            
 
     def forward(self, x):
         """
@@ -72,11 +131,22 @@ class MDRNN_basic(nn.Module):
         """
         
         batch_size = x.size(0)
-        x = self.mdlstm(x)
-        final_act_1 = x[:, :, 0, -1, -1].view(batch_size, -1)
-        final_act_2 = x[:, :, 1, 0, -1].view(batch_size, -1)
-        final_act_3 = x[:, :, 2, -1, 0].view(batch_size, -1)
-        final_act_4 = x[:, :, 3, 0, 0].view(batch_size, -1)
+        
+        # ~ x = self.bloc1(x)
+        # ~ x = self.bloc2(x)
+        # ~ x = self.bloc3(x)
+        
+        
+        
+        x = self.conv1(x)
+        x, om = self.mdlstm(x)
+        
+        final_act_1 = om[:, :, 0, -1, -1].view(batch_size, -1)
+        final_act_2 = om[:, :, 1, 0, -1].view(batch_size, -1)
+        final_act_3 = om[:, :, 2, -1, 0].view(batch_size, -1)
+        final_act_4 = om[:, :, 3, 0, 0].view(batch_size, -1)
         x = torch.cat((torch.cat((torch.cat((final_act_1, final_act_2), dim=1), final_act_3), dim=1), final_act_4), dim=1)
+        
         x = self.fc(x)
+        
         return x
