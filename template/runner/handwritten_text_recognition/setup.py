@@ -169,7 +169,7 @@ def set_up_model(output_channels, model_name, pretrained, optimizer_name, no_cud
     if resize_height and pad_width:
         expected_input_size = (resize_height, pad_width)
     
-        model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained, expected_input_size=expected_input_size)
+        model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained, expected_input_size=expected_input_size, no_cuda=no_cuda)
     else:
         model = models.__dict__[model_name](output_channels=output_channels, pretrained=pretrained)
     # Get the optimizer created with the specified parameters in kwargs (such as lr, momentum, ... )

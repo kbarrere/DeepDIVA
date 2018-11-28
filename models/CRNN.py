@@ -47,7 +47,7 @@ class _CRNN(nn.Module):
 
     """
 
-    def __init__(self, output_channels=80, expected_input_size=(128, 5248), num_lstm=3):
+    def __init__(self, output_channels=80, expected_input_size=(128, 5248), num_lstm=3, no_cuda=False):
         """
         Creates a CRNN model from the scratch.
 
