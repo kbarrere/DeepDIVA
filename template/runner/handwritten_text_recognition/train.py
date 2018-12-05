@@ -61,7 +61,7 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, dictionnary_
     # Iterate over whole training set
     end = time.time()
     pbar = tqdm(enumerate(train_loader), total=len(train_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target, target_len, image_width) in pbar:
+    for batch_idx, (input, target, target_len, image_width, image_id) in pbar:
 
         # Measure data loading time
         data_time.update(time.time() - end)

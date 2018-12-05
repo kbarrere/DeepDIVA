@@ -78,14 +78,6 @@ class HandwrittenTextRecognition:
                                                                             train_loader=train_loader,
                                                                             **kwargs)
         
-        pp=0
-        for p in list(model.parameters()):
-            nn=1
-            for s in list(p.size()):
-                nn = nn*s
-            pp += nn
-        logging.warning("Model has " + str(pp) + " parameters.")
-        
         # Core routine
         logging.info('Begin training')
         val_value = np.zeros((epochs + 1 - start_epoch))

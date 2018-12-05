@@ -105,6 +105,7 @@ class PiFFImageNotInMemory(data.Dataset):
         self.piff_json_folder = self.piff_json_file[:-len(self.piff_json_file.split('/')[-1])]
         self.image_paths = []
         self.line_values = []
+        self.image_ids = []
 
         f = open(piff_json_file, 'r', encoding='utf-8')
         piff_dict = json.load(f)
@@ -144,6 +145,12 @@ class PiFFImageNotInMemory(data.Dataset):
                     value = dict['value']
 
                 self.line_values.append(value)
+                
+                img_id = ""
+                if 'id' in dict:
+                    imd_id = dict['id']
+
+                self.image_ids_id.append(img_id)
 
             else:
                 if 'children' in dict:
@@ -200,7 +207,10 @@ class PiFFImageNotInMemory(data.Dataset):
         if self.resize_height:
             image_width = int(self.resize_height / image_height * image_width)
 
-        return img, target, target_len, image_width
+		# Get image id
+		img_id = self.image_ids[index]
+
+        return img, target, target_len, image_width, img_id
 
     def __len__(self):
         return len(self.image_paths)

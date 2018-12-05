@@ -69,7 +69,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
     end = time.time()
 
     pbar = tqdm(enumerate(data_loader), total=len(data_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target, target_len, image_width) in pbar:
+    for batch_idx, (input, target, target_len, image_width, img_id) in pbar:
         
         # Measure data loading time
         data_time.update(time.time() - end)
