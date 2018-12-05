@@ -17,15 +17,15 @@ from template.runner.handwritten_text_recognition.ctc_decode.ctc_decode import c
 
 def validate(val_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda, decode_val, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to validate the model."""
-    return _evaluate(val_loader, model, criterion, writer, epoch, dictionnary_name, 'val', no_cuda, decode_val,log_interval, **kwargs)
+    return _evaluate(val_loader, model, criterion, writer, epoch, dictionnary_name, 'val', no_cuda, decode_val, log_interval=log_interval, **kwargs)
 
 
 def test(test_loader, model, criterion, writer, epoch, dictionnary_name, no_cuda, log_interval=20, **kwargs):
     """Wrapper for _evaluate() with the intent to test the model"""
-    return _evaluate(test_loader, model, criterion, writer, epoch, dictionnary_name, 'test', no_cuda, True,log_interval, **kwargs)
+    return _evaluate(test_loader, model, criterion, writer, epoch, dictionnary_name, 'test', no_cuda, True, log_interval=log_interval, **kwargs)
 
 
-def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, logging_label, no_cuda, decode, log_interval=10, **kwargs):
+def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, logging_label, no_cuda, decode, text_output_file, log_interval=10, **kwargs):
     """
     The evaluation routine
 
@@ -61,6 +61,10 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
     cers = AverageMeter()
     losses = AverageMeter()
     data_time = AverageMeter()
+    
+    # If we need to store the predictions, open a file
+    if text_output_file and decode:
+        f = open(text_output_file, 'w', encoding='utf-8')
 
     # Switch to evaluate mode (turn off dropout & such )
     model.eval()
@@ -122,6 +126,12 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
                 logging.info("True labels: " + str(references))
                 logging.info("CER: " + str(cer))
                 logging.info("WER: " + str(wer))
+            
+            # Write the predictions in a text file
+            if text_output_file:
+                for b in range(batch_size):
+                    text = str(img_id[b] + " " + predictions[b] + "\n")
+                    f.write(text)
         
         loss = criterion(acts, labels, acts_len, labels_len)
         
@@ -158,6 +168,10 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
                                  Loss='{loss.avg:.4f}\t'.format(loss=losses),
                                  Data='{data_time.avg:.3f}\t'.format(data_time=data_time))
 
+    # If we need to store the predictions, close the file
+    if text_output_file and decode:
+        f.close()
+    
     if decode:
         logging.info(_prettyprint_logging_label(logging_label) +
                      ' epoch[{}]: '

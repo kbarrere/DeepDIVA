@@ -148,9 +148,9 @@ class PiFFImageNotInMemory(data.Dataset):
                 
                 img_id = ""
                 if 'id' in dict:
-                    imd_id = dict['id']
+                    img_id = dict['id']
 
-                self.image_ids_id.append(img_id)
+                self.image_ids.append(img_id)
 
             else:
                 if 'children' in dict:
@@ -207,8 +207,8 @@ class PiFFImageNotInMemory(data.Dataset):
         if self.resize_height:
             image_width = int(self.resize_height / image_height * image_width)
 
-		# Get image id
-		img_id = self.image_ids[index]
+        # Get image id
+        img_id = self.image_ids[index]
 
         return img, target, target_len, image_width, img_id
 

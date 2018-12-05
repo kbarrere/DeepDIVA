@@ -327,3 +327,6 @@ def _htr_options(parser):
     parser_htr.add_argument('--beam-width',
                                 type=int,
                                 help='The width of the beam when using a beam search ctc decoder.\nIf the argument is not set, the default value is 10')
+    parser_htr.add_argument('--text-output-file',
+                                help='File to store predicted sequences for the test set.\nIn each line, it write the line id followed by the predicted sequence')
+                                
