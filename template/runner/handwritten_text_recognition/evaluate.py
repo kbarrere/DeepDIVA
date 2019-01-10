@@ -104,6 +104,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
         image_width = image_width.type(torch.IntTensor)
         
         acts_len = (((image_width - 2) // 2 - 2) // 2 - 2) // 2 - 3 # TODO: use models attributes ?
+        # ~ acts_len = ((image_width - 2) // 2 - 2) // 2 - 5 # TODO: use models attributes ?
+        # ~ acts_len = ((((image_width - 2) // 2 - 2) // 2 - 2) // 2 - 2) // 2 - 1 # TODO: use models attributes ?
         
         labels_len = target_len.type(torch.IntTensor)
         
@@ -190,12 +192,12 @@ def _evaluate(data_loader, model, criterion, writer, epoch, dictionnary_name, lo
     # Logging the epoch-wise CER and WER
     if multi_run is None:
         if decode:
-            writer.add_scalar('train/cer', cers.avg, epoch)
-            writer.add_scalar('train/wer', wers.avg, epoch)
+            writer.add_scalar(logging_label + '/cer', cers.avg, epoch)
+            writer.add_scalar(logging_label + '/wer', wers.avg, epoch)
     else:
         if decode:
-            writer.add_scalar('train/cer_{}'.format(multi_run), cers.avg, epoch)
-            writer.add_scalar('train/wer_{}'.format(multi_run), wers.avg, epoch)
+            writer.add_scalar(logging_label + '/cer_{}'.format(multi_run), cers.avg, epoch)
+            writer.add_scalar(logging_label + '/wer_{}'.format(multi_run), wers.avg, epoch)
 
     if decode:
         return cers.avg

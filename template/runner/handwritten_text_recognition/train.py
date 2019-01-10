@@ -181,6 +181,8 @@ def train_one_mini_batch(model, criterion, optimizer, input_var, target_var, tar
     
     # TODO: use models attributes ?
     acts_len = (((image_width - 2) // 2 - 2) // 2 - 2) // 2 - 3
+    # ~ acts_len = ((image_width - 2) // 2 - 2) // 2 - 5 
+    # ~ acts_len = ((((image_width - 2) // 2 - 2) // 2 - 2) // 2 - 2) // 2 - 1 
     
     labels_len = target_len.type(torch.IntTensor)
     

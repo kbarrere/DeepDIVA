@@ -88,7 +88,7 @@ class _CRNN(nn.Module):
         self.conv4 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),
             nn.LeakyReLU(),
-            nn.Dropout2d(p=0.2),
+            # ~ nn.MaxPool2d(kernel_size=2, stride=2),
             nn.BatchNorm2d(64)
         )
 
@@ -100,6 +100,8 @@ class _CRNN(nn.Module):
         )
 
         self.features_size = (((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2 ) // 2 - 5, (((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2) // 2 - 3
+        # ~ self.features_size = ((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 7, ((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 5
+        # ~ self.features_size = ((((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2) // 2 - 2) // 2 - 3, ((((self.expected_input_size[0] - 2) // 2 - 2) // 2 - 2) // 2 - 2) - 1
         
         self.collapse = Collapse(height=self.features_size[0], width=1)
         
